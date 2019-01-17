@@ -21,6 +21,7 @@ def main(argv=[]):
     # Test N times on random part of training data
     N = 10
     scores = testModelInLoopOnPartialTestData(train, test, N)
+    printResults(scores)
 
     # Test model trained in all training data and return predictions on test data
     predictions = trainModelAndTestItOnTestData(train, test)
@@ -39,17 +40,27 @@ def packSubmissionCSV(test, predictions):
     submission['SalePrice'] = predictions
     return submission
 
+def printResults(scores):
+    resultString = ""
+    for i, scr in enumerate(scores):
+        resultString += "  #Iteration:\t{}\t|\tR2: {}\n".format(i, scr)
+    resultString += "Mean R2:\t{}".format(np.mean(scores))
+    print(resultString)
+
 def trainModelAndTestItOnTestData(train, test):
-    X, y = featureSelection(train, test)
+    X, y = featureSelection(train)
     lr = linear_model.LinearRegression()
     model = lr.fit(X, y)
+
+    test  = transformCategoricalToNumerical(test)
     observations = test.select_dtypes(include=[np.number]).drop('Id', axis=1).interpolate()
+
     predictions = model.predict(observations)
     finalPredictions = np.exp(predictions) #because we put log of SalePrice
     return finalPredictions
 
 def testModelInLoopOnPartialTestData(train, test, times):
-    X, y = featureSelection(train, test)
+    X, y = featureSelection(train)
     scores = []
     for it in range(0, times):
         R2 = trainModelAndEvaluateIt(X, y)
@@ -62,11 +73,12 @@ def trainModelAndEvaluateIt(X, y):
     model = lr.fit(X_train, y_train)
     return model.score(X_test, y_test)
 
-def featureSelection(train, test):
+def featureSelection(train):
     # Step 1
     train = removeOutliers(train)
     # Step 2 - one-hot encoding for 'street' feature
-    train, test = transformCategoricalToNumerical(train, test)
+    train = transformCategoricalToNumerical(train)
+
     # Step 3 - interpolate missing values
     train = interpolateMissingValues(train)
     # Step 4 - log saleprice to reduce skewness
@@ -80,16 +92,12 @@ def interpolateMissingValues(train):
     interp = train.select_dtypes(include=[np.number]).interpolate()
     return interp.dropna()
 
-def transformCategoricalToNumerical(train, test):
+def transformCategoricalToNumerical(dataframe):
     # Encoding Street Condition
-    train['enc_street'] = pd.get_dummies(train.Street, drop_first=True)
-    test['enc_street']  = pd.get_dummies(test.Street, drop_first=True)
-
+    dataframe['enc_street'] = pd.get_dummies(dataframe.Street, drop_first=True)
     # Encoding Sale Condition
-    train['enc_condition'] = train.SaleCondition.apply(encodeSaleCond)
-    test['enc_condition']  = test.SaleCondition.apply(encodeSaleCond)
-
-    return train, test
+    dataframe['enc_condition'] = dataframe.SaleCondition.apply(encodeSaleCond)
+    return dataframe
 
 def encodeSaleCond(x):
     enc = 0
