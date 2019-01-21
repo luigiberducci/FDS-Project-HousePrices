@@ -156,3 +156,47 @@ convertAllCHRToFactor <- function(data){
     data[, character_vars] <- lapply(data[, character_vars], as.factor)
     return(data)
 }
+
+addFeatureBathrooms <- function(data) {
+    data$TotBathRms <- data$BsmtFullBath + data$BsmtHalfBath + data$FullBath + data$HalfBath
+    return(data)
+}
+
+featureSelection <- function(data) {
+    selected<- c("OverallQual", "FullBath", "KitchenAbvGr", "GarageCars", "TotRmsAbvGrd", "TotBathRms")
+    data$OverallCond <- NULL
+    data$Functional <- NULL
+    data$BsmtFullBath <- NULL
+    data$BsmtHalfBath <- NULL
+    data$HalfBath <- NULL
+    data$BedroomAbvGr <- NULL
+    data$GarageType <- NULL
+    data$GarageYrBlt <- NULL
+    data$GarageFinish <- NULL
+    data$GarageArea <- NULL
+    data$GarageQual <- NULL
+    data$GarageCond <- NULL
+    data$PavedDrive <- NULL
+    data$Fence <- NULL
+    data$WoodDeckSF <- NULL
+    data$OpenPorchSF <- NULL
+    data$EnclosedPorch <- NULL
+    data$ScreenPorch <- NULL
+    data$PoolArea <- NULL
+    data$PoolQC <- NULL
+    return(data)
+}
+
+runCompleteProcess <- function(data){
+    data <- convertToOrdinal(data)
+    data <- convertToFactors(data)
+    data <- addFeatureBathrooms(data)
+    data <- featureSelection(data)
+    data <- getNumericalData(data)
+}
+
+writeCSV <- function(test, predictions, outputFile){
+    labels <- test$Id
+    df <- data.frame(Id = labels, SalePrice = predictions)
+    write.csv(df, file = outputFile, row.names = F)
+}
