@@ -1,0 +1,169 @@
+---
+title: "Feature engineering Emanuele"
+author: "Emanuele Giona"
+date: "21 gennaio 2019"
+output: html_document
+---
+
+## Features to analyze
+
+Group 1:
+
+- MSSubClass: categorical
+- MSZoning: categorical
+- Street: ordinal
+- Alley: ordinal
+- Neighborhood: categorical
+- Condition1: categorical
+- Condition2: categorical
+
+Group 2:
+
+- LotFrontage: value
+- LotArea: value
+- LotShape: ordinal
+- LandContour: categorical
+- LotConfig: categorical
+- LandSlope: ordinal
+
+Group 3:
+
+- Utilities: ordinal
+- BldgType: categorical
+- HouseStyle: categorical
+- Heating: categorical
+- HeatingQC: ordinal (quality)
+- CentralAir: yes/no
+- Electrical: categorical
+- Fireplaces: value
+- FireplacesQu: ordinal (quality)
+- MiscFeature: categorical
+- MiscVal: value
+
+```{r}
+#--- imports ---
+library(ggplot2)
+library(dplyr)
+
+#--- datasets ---
+trainingSet <- read.csv("data/train.csv", stringsAsFactors = F)
+testSet <- read.csv("data/test.csv", stringsAsFactors = F)
+
+#--- static vars ---
+testIDs <- testSet$Id
+
+Group1 <- c("MSSubClass", "MSZoning", "Street", "Alley", "Neighborhood", "Condition1", "Condition2")
+Group2 <- c("LotFrontage", "LotArea", "LotShape", "LandContour", "LotConfig", "LandSlope")
+Group3 <- c("Utilities", "BldgType", "HouseStyle", "Heating", "HeatingQC", "CentralAir", "Electrical", "Fireplaces", "FireplacesQu", "MiscFeature", "MiscVal")
+
+AccessType <- c("None" = 0, "Grvl" = 1, "Pave" = 2)
+LotShape <- c("IR3" = 0, "IR2" = 1, "IR1" = 2, "Reg" = 3)
+LandSlope <- c("Sev" = 0, "Mod" = 1, "Gtl" = 2)
+Utilities <- c("None" = 0, "ELO" = 1, "NoSeWa" = 2, "NoSewr" = 3, "AllPub" = 4)
+Quality <- c("None" = 0, "Po" = 1, "Fa" = 2, "TA" = 3, "Gd" = 4, "Ex" = 5)
+CentralAir <- c("N" = 0, "Y" = 1)
+
+#--- preliminary data handling ---
+trainingSet$Id <- NULL
+testSet$Id <- NULL
+testSet$SalePrice <- NA
+fullData <- rbind(trainingSet, testSet)
+
+#--- functions ---
+#returns the mode of a collection of values, ignoring NAs
+getMode <- function(values){
+  uniques <- unique(values)
+  uniques <- uniques[!is.na(uniques)]
+  maxFreqID <- which.max(tabulate(match(values,uniques)))
+  uniques[maxFreqID]
+}
+
+#returns values as factors, filling NAs with the mode or with the specified argument
+getFactors <- function(values, replaceNA = "NA"){
+  if(!is.factor(values))
+  {
+    values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
+    values <- as.factor(values)
+  }
+  values
+}
+
+#returns values as integers, enconding them via the given dictionary, filling NAs with the mode or with the specified argument
+getIntegers <- function(values, dictionary, replaceNA = "NA"){
+  if(!is.integer(values))
+  {
+    values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
+    values <- as.integer(dictionary[values])
+  }
+  values
+}
+
+#returns average frontage given a certain neighborhood
+avgFrontage <- function(neighborhood){
+  as.integer(mean(fullData$LotFrontage[fullData$Neighborhood == neighborhood], na.rm = T))
+}
+
+#substitues all NAs with the average frontage of the same neighborhood
+getValidFrontages <- function(data){
+  if(0 < length(which(is.na(data$LotFrontage))))
+  {
+    for(i in 1:nrow(data))
+      if(is.na(data$LotFrontage[i]))
+        data$LotFrontage[i] <- avgFrontage(data$Neighborhood[i])
+  }
+  
+  frontages <- data %>%
+    select(LotFrontage)
+}
+```
+
+```{r}
+#Group 1 features
+
+fullData$MSSubClass <- getFactors(fullData$MSSubClass)
+fullData$MSZoning <- getFactors(fullData$MSZoning)
+fullData$Street <- getIntegers(fullData$Street, AccessType)
+fullData$Alley <- getFactors(fullData$Alley, "None")
+fullData$Neighborhood <- getFactors(fullData$Neighborhood)
+fullData$Condition1 <- getFactors(fullData$Condition1)
+fullData$Condition2 <- getFactors(fullData$Condition2)
+
+# tmpData1 <- fullData[Group1]
+# tmpData1$SalePrice <- fullData$SalePrice
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = MSSubClass, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = MSZoning, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = Street, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = Alley, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = Neighborhood, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = Condition1, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = tmpData1[!is.na(tmpData1$SalePrice),], aes(x = Condition2, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+
+```
+
+```{r}
+#Group 2 features
+
+#print(length(which(is.na(fullData$LotFrontage))))
+fullData$LotFrontage <- getValidFrontages(fullData)
+#print(length(which(is.na(fullData$LotFrontage))))
+fullData$LotArea[is.na(fullData$LotArea)] <- 0
+fullData$LotShape <- getIntegers(fullData$LotShape, LotShape)
+fullData$LandContour <- getFactors(fullData$LandContour)
+fullData$LotConfig <- getFactors(fullData$LotConfig)
+fullData$LandSlope <- getIntegers(fullData$LandSlope, LandSlope)
+
+```
+
