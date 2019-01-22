@@ -50,12 +50,14 @@ trainingSet <- read.csv("data/train.csv", stringsAsFactors = F)
 testSet <- read.csv("data/test.csv", stringsAsFactors = F)
 
 #--- static vars ---
+#for subsequent submission on Kaggle
 testIDs <- testSet$Id
 
 Group1 <- c("MSSubClass", "MSZoning", "Street", "Alley", "Neighborhood", "Condition1", "Condition2")
 Group2 <- c("LotFrontage", "LotArea", "LotShape", "LandContour", "LotConfig", "LandSlope")
-Group3 <- c("Utilities", "BldgType", "HouseStyle", "Heating", "HeatingQC", "CentralAir", "Electrical", "Fireplaces", "FireplacesQu", "MiscFeature", "MiscVal")
+Group3 <- c("Utilities", "BldgType", "HouseStyle", "Heating", "HeatingQC", "CentralAir", "Electrical", "Fireplaces", "FireplaceQu", "MiscFeature", "MiscVal")
 
+#ordinal variables
 AccessType <- c("None" = 0, "Grvl" = 1, "Pave" = 2)
 LotShape <- c("IR3" = 0, "IR2" = 1, "IR1" = 2, "Reg" = 3)
 LandSlope <- c("Sev" = 0, "Mod" = 1, "Gtl" = 2)
@@ -111,9 +113,21 @@ getValidFrontages <- function(data){
       if(is.na(data$LotFrontage[i]))
         data$LotFrontage[i] <- avgFrontage(data$Neighborhood[i])
   }
-  
-  frontages <- data %>%
-    select(LotFrontage)
+  data
+}
+
+#fixes incoherent MiscFeature and MiscVal values (MiscFeature = NA <-> MiscVal = 0)
+getValidMiscFeaturesAndVal <- function(data){
+  if(0 < length(which((is.na(data$MiscFeature) & data$MiscVal > 0) | (!is.na(data$MiscFeature) & data$MiscVal == 0))))
+  {
+    for(i in 1:nrow(data)){
+      if(is.na(data$MiscFeature[i]) & data$MiscVal[i] > 0)
+        data$MiscVal[i] <- 0
+      else if(!is.na(data$MiscFeature[i]) & data$MiscVal[i] == 0)
+        data$MiscFeature[i] <- "None"
+    }
+  }
+  data
 }
 ```
 
@@ -152,18 +166,119 @@ fullData$Condition2 <- getFactors(fullData$Condition2)
 #   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
 
 ```
+The street being Gravel or Paved greatly influences SalePrice.
+
+Condition1 and Condition2 look suspiciously related to each other.
 
 ```{r}
 #Group 2 features
 
-#print(length(which(is.na(fullData$LotFrontage))))
-fullData$LotFrontage <- getValidFrontages(fullData)
-#print(length(which(is.na(fullData$LotFrontage))))
-fullData$LotArea[is.na(fullData$LotArea)] <- 0
+fullData <- getValidFrontages(fullData)
 fullData$LotShape <- getIntegers(fullData$LotShape, LotShape)
 fullData$LandContour <- getFactors(fullData$LandContour)
 fullData$LotConfig <- getFactors(fullData$LotConfig)
 fullData$LandSlope <- getIntegers(fullData$LandSlope, LandSlope)
 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = LotFrontage, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice) & fullData$LotFrontage < 200 & fullData$LotArea < 100000 & fullData$SalePrice < 600000,], aes(x = LotFrontage, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = LotArea, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red") 
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice) & fullData$LotFrontage < 200 & fullData$LotArea < 100000 & fullData$SalePrice < 600000,], aes(x = LotArea, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red") 
+
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = LotShape, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = LandContour, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = LotConfig, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = LandSlope, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+
 ```
 
+The following outliers could be removed in order to help the performance of our model:
+
+- 2 houses with LotFrontage value greater than 200 feet
+- 4 houses with LotArea greater than 100000 squared feet
+- 4 houses with SalePrice greater than 600000 dollars
+
+```{r}
+#Group 3 features
+
+fullData$Utilities <- getIntegers(fullData$Utilities, Utilities, "None")
+fullData$BldgType <- getFactors(fullData$BldgType)
+fullData$HouseStyle <- getFactors(fullData$HouseStyle)
+fullData$Heating <- getFactors(fullData$Heating)
+fullData$HeatingQC <- getIntegers(fullData$HeatingQC, Quality, 'None')
+fullData$CentralAir <- getIntegers(fullData$CentralAir, CentralAir, 'N')
+fullData$Electrical <- getFactors(fullData$Electrical)
+fullData$FireplaceQu <- getIntegers(fullData$FireplaceQu, Quality, "None")
+fullData <- getValidMiscFeaturesAndVal(fullData)
+fullData$MiscFeature <- getFactors(fullData$MiscFeature, "None")
+
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = Utilities, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = BldgType, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = HouseStyle, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = Heating, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = HeatingQC, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = CentralAir, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = Electrical, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = Fireplaces, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice) & fullData$Fireplaces < 3,], aes(x = Fireplaces, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = FireplaceQu, y = SalePrice)) +
+#   geom_bar(stat = "summary", fun.y = "median", fill = "blue")
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = MiscFeature, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1)
+# 
+# tmpData3 <- fullData[!is.na(fullData$SalePrice) & (fullData$MiscFeature == "TenC" | fullData$MiscFeature == "Othr" | fullData$MiscFeature == "Gar2"),]
+# print(select(tmpData3, SalePrice, MiscFeature, MiscVal))
+# 
+# ggplot(data = fullData[!is.na(fullData$SalePrice),], aes(x = MiscVal, y = SalePrice)) +
+#   geom_point(color = "blue", size = 1) +
+#   geom_smooth(method = "lm", se = F, color = "red")
+
+```
+
+More outliers have been spotted:
+
+- 1 house with NoSeWa utilities
+- 5 houses with 3 fireplaces
+- 1 house with the tennis court, 2 houses with a second garage, 1 house with other features
+- 2 houses with MiscVal greater than 5000 dollars (these same houses are removed if the previous outliers are removed)
+
+In general, Utilities doesn't look like a good predictor, since all the house but one have AllPub utilities. Neither MiscVal can be considered as a strong predictor: few houses have MiscVal at most 2500 dollars, given the high rate of houses with no additional features, the value 0 for MiscVal is the most common.
