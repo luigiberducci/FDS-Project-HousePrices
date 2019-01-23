@@ -44,9 +44,12 @@ getNAReport <- function(data) {
 convertToOrdinal <- function(data){
     data <- convertFunctional(data)
     data <- convertKitchenQual(data)
+    data <- convertBathRooms(data)
     data <- convertGarageFinish(data)
     data <- convertGarageQual(data)
     data <- convertGarageCond(data)
+    data <- convertGarageCars(data)
+    data <- convertGarageArea(data)
     data <- convertFence(data)
     data <- convertPoolQC(data)
     return(data)
@@ -54,6 +57,7 @@ convertToOrdinal <- function(data){
 
 convertToFactors <- function(data){
     data <- convertGarageType(data)
+    data <- convertGarageYrBlt(data)
     data <- convertPavedDrive(data)
     return(data)
 }
@@ -72,10 +76,25 @@ convertKitchenQual <- function(data) {
     return(data)
 }
 
+convertBathRooms <- function(data) {
+    data$FullBath[is.na(data$FullBath)] <- 0
+    data$HalfBath[is.na(data$HalfBath)] <- 0
+    data$BsmtFullBath[is.na(data$BsmtFullBath)] <- 0
+    data$BsmtHalfBath[is.na(data$BsmtHalfBath)] <- 0
+    return(data)
+}
+
 convertGarageFinish <- function(data) {
     data$GarageFinish[is.na(data$GarageFinish)] <- 'Miss'
     replace <- c('Fin'=3, 'RFn'=2, 'Unf'=1, 'Miss'=0)
     data$GarageFinish <- as.integer(revalue(data$GarageFinish, replace, warn_missing=FALSE))
+    return(data)
+}
+
+convertGarageYrBlt <- function(data) {
+    # med <- median(train$GarageYrBlt[!is.na(train$GarageYrBlt)])
+    data$GarageYrBlt[is.na(data$GarageYrBlt)] <- 0
+    data$GarageYrBlt <- as.factor(data$GarageYrBlt)
     return(data)
 }
 
@@ -104,6 +123,16 @@ convertPoolQC <- function(data) {
     data$PoolQC[is.na(data$PoolQC)] <- 'Miss'
     replace <- c('Ex'=4, 'Gd'=3, 'TA'=2, 'Fa'=1, 'Miss'=0)
     data$PoolQC <- as.integer(revalue(data$PoolQC, replace, warn_missing=FALSE))
+    return(data)
+}
+
+convertGarageCars <- function(data) {
+    data$GarageCars[ is.na(data$GarageCars) ] <- 0
+    return(data)
+}
+
+convertGarageArea <- function(data) {
+    data$GarageArea[ is.na(data$GarageArea) ] <- 0
     return(data)
 }
 
@@ -158,7 +187,10 @@ convertAllCHRToFactor <- function(data){
 }
 
 addFeatureBathrooms <- function(data) {
-    data$TotBathRms <- data$BsmtFullBath + data$BsmtHalfBath + data$FullBath + data$HalfBath
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
+    data$TotBathRms <- data$BsmtFullBath + 0.5*data$BsmtHalfBath + data$FullBath + 0.5*data$HalfBath
+    data$SalePrice <- prices
     return(data)
 }
 
@@ -191,8 +223,8 @@ runCompleteProcess <- function(data){
     data <- convertToOrdinal(data)
     data <- convertToFactors(data)
     data <- addFeatureBathrooms(data)
-    data <- featureSelection(data)
-    data <- getNumericalData(data)
+#    data <- featureSelection(data)
+#    data <- getNumericalData(data)
 }
 
 writeCSV <- function(test, predictions, outputFile){
