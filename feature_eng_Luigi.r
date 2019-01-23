@@ -31,8 +31,13 @@ getNumericalFields <- function(data) {
     return(newData)
 }
 
-getFactor <- function(data) {
+getFactorFields <- function(data) {
     newData <- which(sapply(data, is.factor))
+    return(newData)
+}
+
+getFactorData <- function(data) {
+    newData <- data[, getFactorFields(data)]
     return(newData)
 }
 
@@ -50,7 +55,6 @@ convertToOrdinal <- function(data){
     data <- convertGarageCond(data)
     data <- convertGarageCars(data)
     data <- convertGarageArea(data)
-    data <- convertFence(data)
     data <- convertPoolQC(data)
     return(data)
 }
@@ -58,6 +62,7 @@ convertToOrdinal <- function(data){
 convertToFactors <- function(data){
     data <- convertGarageType(data)
     data <- convertGarageYrBlt(data)
+    data <- convertFence(data)
     data <- convertPavedDrive(data)
     return(data)
 }
@@ -92,9 +97,11 @@ convertGarageFinish <- function(data) {
 }
 
 convertGarageYrBlt <- function(data) {
+    #Todo: create 2 class "before2000" and "after2000", convert them to dummies and check correlation
+    #Class after 2000 seems to have a small but significant correlation with prices
     # med <- median(train$GarageYrBlt[!is.na(train$GarageYrBlt)])
     data$GarageYrBlt[is.na(data$GarageYrBlt)] <- 0
-    data$GarageYrBlt <- as.factor(data$GarageYrBlt)
+    # data$GarageYrBlt <- as.factor(data$GarageYrBlt)
     return(data)
 }
 
@@ -116,6 +123,7 @@ convertFence <- function(data) {
     data$Fence[is.na(data$Fence)] <- 'Miss'
     replace <- c('GdPrv'=4, 'MnPrv'=3, 'GdWo'=2, 'MnWw'=1, 'Miss'=0)
     data$Fence <- as.integer(revalue(data$Fence, replace, warn_missing=FALSE))
+    data$Fence <- as.factor(data$Fence)
     return(data)
 }
 
@@ -137,13 +145,19 @@ convertGarageArea <- function(data) {
 }
 
 convertGarageType <- function(data) {
-    data$GarageType[ is.na(data$GarageType) ] <- 'None'
+    #TODO: create 2 classes "builtin/attached" or "others" and check correlation with prices
+    # separately the have respectively corr 0.22 and 0.33 with prices
+    data$GarageType[is.na(data$GarageType) ] <- 0
+    data$GarageType[!(data$GarageType == 'BuiltIn' | data$GarageType=='Attchd')] <- 0
+    data$GarageType[data$GarageType == 'BuiltIn' | data$GarageType=='Attchd'] <- 1
     data$GarageType <- as.factor(data$GarageType)
     return(data)
 }
 
 convertPavedDrive <- function(data) {
     data$PavedDrive[ is.na(data$PavedDrive) ] <- 'None'
+    data$PavedDrive[ !(data$PavedDrive=='Y') ] <- 0
+    data$PavedDrive[ data$PavedDrive=='Y' ] <- 1
     data$PavedDrive <- as.factor(data$PavedDrive)
     return(data)
 }
@@ -194,6 +208,32 @@ addFeatureBathrooms <- function(data) {
     return(data)
 }
 
+addFeatureRecentGarage <- function(data) {
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
+    data$RecentGarage[data$GarageYrBlt < 2000] <- 0
+    data$RecentGarage[data$GarageYrBlt >= 2000] <- 1
+    data$RecentGarage <- as.factor(data$RecentGarage)
+    data$SalePrice <- prices
+    return(data)
+}
+
+addFeatureCarsXArea <- function(data) {
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
+    data$GarageCarsTimesArea <- data$GarageCars * data$GarageArea
+    data$SalePrice <- prices
+    return(data)
+}
+
+addFeatureTypeXRecent <- function(data) {
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
+    data$GarageRecentType <- data$RecentGarage * data$GarageType
+    data$SalePrice <- prices
+    return(data)
+}
+
 featureSelection <- function(data) {
     selected<- c("OverallQual", "FullBath", "KitchenAbvGr", "GarageCars", "TotRmsAbvGrd", "TotBathRms")
     data$OverallCond <- NULL
@@ -223,8 +263,19 @@ runCompleteProcess <- function(data){
     data <- convertToOrdinal(data)
     data <- convertToFactors(data)
     data <- addFeatureBathrooms(data)
+    data <- addFeatureRecentGarage(data)
+
+    fact <- getFactorData(data)
+    dummy <- as.data.frame(model.matrix(~.-1, fact))
+
+    data$GarageType <- dummy$GarageType1
+    data$PavedDrive <- dummy$PavedDrive1
+    data$RecentGarage <- dummy$RecentGarage1
+
+    data <- addFeatureCarsXArea(data)
+    data <- addFeatureTypeXRecent(data)
 #    data <- featureSelection(data)
-#    data <- getNumericalData(data)
+    return(data)
 }
 
 writeCSV <- function(test, predictions, outputFile){
