@@ -181,7 +181,7 @@ handleRooms <- function(data){
 }
 
 handleGarage <- function(data){
-    #TODO Check consistency among Garage features
+    data <- checkConsistencyGarage(data)
     data$GarageFinish <- encodeAsOrdinal(data$GarageFinish, GarageFinish, "Miss" )
     data$GarageQual <- encodeAsOrdinal(data$GarageQual, Qualities, "None" )
     data$GarageCond <- encodeAsOrdinal(data$GarageCond, Qualities, "None" )
@@ -192,6 +192,27 @@ handleGarage <- function(data){
     data$GarageType[data$GarageType == 'BuiltIn' | data$GarageType=='Attchd'] <- 'BA'
     data$GarageType <- encodeAsFactor(data$GarageType, "OT")
     data
+}
+
+checkConsistencyGarage <- function(data){
+    for(i in 1:nrow(data))
+        if(currentRowIsGarageInconsistent(data, i)) {
+            data$GarageType[i] <- NA
+            data$GarageQual[i] <- NA
+            data$GarageCond[i] <- NA
+            data$GarageCars[i] <- NA
+            data$GarageArea[i] <- NA
+            data$GarageYrBlt[i] <- NA
+            data$GarageFinish[i] <- NA
+        }
+    data
+}
+
+currentRowIsGarageInconsistent <- function(data, i){
+    garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
+    currentData <- data[i, garage]
+    isNA <- sapply(currentData, is.na)
+    TRUE %in% isNA & FALSE %in% isNA
 }
 
 handleOutside <- function(data){
