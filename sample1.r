@@ -42,6 +42,7 @@ pool <- c("PoolArea", "PoolQC")
 garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
 
 luigi  <- c(general, bathrooms, kitchen, rooms, garage, outside, 'SalePrice')
+significative_luigi <- c("OverallQual", "FullBath", "HalfBath", "KitchenQual", "TotRmsAbvGrd", "GarageFinish", "GarageCars", "GarageArea", "GarageCarsTimesArea", "TotBathRms", "RecentGarage1", "GarageRecentType", "GarageTypeOT")
 angelo <- c("YearBuilt","YearRemodAdd","MoSold","YrSold","SaleType","SaleCondition","RoofStyle","RoofMatl","Exterior1st","Exterior2nd","MasVnrType","MasVnrArea","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtExposure","BsmtFinType1","BsmtFinSF1","BsmtFinType2","BsmtFinSF2","BsmtUnfSF","TotalBsmtSF","LowQualFinSF","GrLivArea","SalePrice")
 
 # List of Ordinal variables conversion
@@ -139,6 +140,33 @@ getValidMiscFeaturesAndVal <- function(data){
 }
 
 # Main functions
+savePredictionsOnFile <- function(ids, pred, outputPath){
+    predictionDF <- data.frame(Id = ids, SalePrice = pred)
+    write.csv(predictionDF, file = outputPath, row.names = FALSE)
+}
+
+predictSalePrices <- function(model, data){
+    test <- data[is.na(data$SalePrice),]
+    test$SalePrice <- NULL
+    predictions <- predict(model, test)
+    predictions
+}
+
+getSimpleLinearModel <- function(data){
+    train <- data[!is.na(data$SalePrice),]
+    model <- lm(SalePrice ~ ., data=train)
+    model
+}
+
+getOnlyRelevantFeatures <- function(data) {
+    numerical <- removeFactors(data)
+    notRelevant <- c("MSSubClass")
+    # notRelevant <- c('MasVnrType', 'MasVnrArea', 'Utilities', 'X1stFlrSF', 'X2ndFlrSF', 'LotShape', 'LotFrontage', 'LandSlope', 'YearRemodAdd', 'ExterCond', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', 'CentralAir', 'LowQualFinSF', 'BsmtFullBath', 'BsmtHalfBath', 'FullBath', 'HalfBath', 'Functional', 'Fireplaces', 'FireplaceQu', 'GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageQual', 'GarageCond', 'PavedDrive', 'WoodDeckSF','OpenPorchSF', 'EnclosedPorch', 'X3SsnPorch', 'ScreenPorch', 'PoolArea','PoolQC', 'MiscVal', 'YrSold')
+    toRemove <- names(numerical) %in% notRelevant
+    relevant <- numerical[!toRemove]
+    relevant
+}
+
 featureEngineering <- function(data){
     #Emanuele
     data <- handleLocations(data) 
@@ -155,7 +183,7 @@ featureEngineering <- function(data){
     data <- addFeatureCarsXArea(data)
     data <- addFeatureRecentType(data)
 
-    data <- appendDummyVariables(data)
+    # data <- appendDummyVariables(data)
     data
 }
 
