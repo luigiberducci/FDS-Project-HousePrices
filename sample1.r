@@ -160,7 +160,7 @@ getSimpleLinearModel <- function(data){
 
 getOnlyRelevantFeatures <- function(data) {
     numerical <- removeFactors(data)
-    notRelevant <- c("MSSubClass")
+    notRelevant <- c("MSSubClass","X1stFlrSF","X2ndFlrSF","LowQualFinSF")
     # notRelevant <- c('MasVnrType', 'MasVnrArea', 'Utilities', 'X1stFlrSF', 'X2ndFlrSF', 'LotShape', 'LotFrontage', 'LandSlope', 'YearRemodAdd', 'ExterCond', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', 'CentralAir', 'LowQualFinSF', 'BsmtFullBath', 'BsmtHalfBath', 'FullBath', 'HalfBath', 'Functional', 'Fireplaces', 'FireplaceQu', 'GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageQual', 'GarageCond', 'PavedDrive', 'WoodDeckSF','OpenPorchSF', 'EnclosedPorch', 'X3SsnPorch', 'ScreenPorch', 'PoolArea','PoolQC', 'MiscVal', 'YrSold')
     toRemove <- names(numerical) %in% notRelevant
     relevant <- numerical[!toRemove]
@@ -287,6 +287,8 @@ handleSaleBsmtAndYears <- function(data){
     data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
     data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
     data$Foundation     <- encodeAsFactor(data$Foundation)
+    #Foundation ad Ordinal -> TODO study how change the model using different values for Foundation
+    #data$Foundation<-as.integer(revalue(data$Foundation, c('Slab'=1, 'BrkTil'=1, 'Stone'=1, 'CBlock'=1, 'Wood'=3, 'PConc'=3)))
     data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
     data$ExterCond      <- encodeAsOrdinal(data$ExterCond,Qualities)
     data$MasVnrType     <- encodeAsOrdinal(data$MasVnrType,Masonry, "None")
@@ -295,11 +297,19 @@ handleSaleBsmtAndYears <- function(data){
     data$BsmtExposure   <- encodeAsOrdinal(data$BsmtExposure,Exposure, "None")
     data$BsmtFinType1   <- encodeAsOrdinal(data$BsmtFinType1,FinType, "None")
     data$BsmtFinType2   <- encodeAsOrdinal(data$BsmtFinType2,FinType, "None")
+    #Introducing new features Age, Remod, IsNew
+    data$Age <- as.numeric(data$YrSold)-data$YearRemodAdd
+	  data$Remod <- ifelse(data$YearBuilt==data$YearRemodAdd, 0, 1) #0=No Remodeling, 1=Remodeling
+	  data$IsNew <- ifelse(data$YrSold==data$YearBuilt, 1, 0) #0=not new, 1=new
+    data$YrSold <- as.factor(data$YrSold) #Numeric version is now not needed anymore
     data$BsmtFinSF1[is.na(data$BsmtFinSF1)] <-0
     data$BsmtFinSF2[is.na(data$BsmtFinSF2)] <-0
     data$BsmtUnfSF[is.na(data$BsmtUnfSF)] <-0
     data$TotalBsmtSF[is.na(data$TotalBsmtSF)] <-0
     data$MasVnrArea[is.na(data$MasVnrArea)] <-0
+    #Introducing a new feature TotalSF
+    data$TotalSF <- data$GrLivArea + data$TotalBsmtSF
+    data <- data[-c(524, 1299),] #outliers
     data
 }
 
