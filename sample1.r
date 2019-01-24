@@ -160,7 +160,7 @@ getSimpleLinearModel <- function(data){
 
 getOnlyRelevantFeatures <- function(data) {
     numerical <- removeFactors(data)
-    notRelevant <- c("MSSubClass","X1stFlrSF","X2ndFlrSF","LowQualFinSF")
+    notRelevant <- c("MSSubClass","X1stFlrSF","X2ndFlrSF","LowQualFinSF", "Utilities", "Condition2", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea", "Utilities", "Street")
     # notRelevant <- c('MasVnrType', 'MasVnrArea', 'Utilities', 'X1stFlrSF', 'X2ndFlrSF', 'LotShape', 'LotFrontage', 'LandSlope', 'YearRemodAdd', 'ExterCond', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', 'CentralAir', 'LowQualFinSF', 'BsmtFullBath', 'BsmtHalfBath', 'FullBath', 'HalfBath', 'Functional', 'Fireplaces', 'FireplaceQu', 'GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageQual', 'GarageCond', 'PavedDrive', 'WoodDeckSF','OpenPorchSF', 'EnclosedPorch', 'X3SsnPorch', 'ScreenPorch', 'PoolArea','PoolQC', 'MiscVal', 'YrSold')
     toRemove <- names(numerical) %in% notRelevant
     relevant <- numerical[!toRemove]
