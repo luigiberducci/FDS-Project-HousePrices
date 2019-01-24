@@ -153,6 +153,7 @@ featureEngineering <- function(data){
     data <- addFeatureBathrooms(data)
     data <- addFeatureRecentGarage(data)
     data <- addFeatureCarsXArea(data)
+    data <- addFeatureRecentType(data)
 
     data <- appendDummyVariables(data)
     data
@@ -197,7 +198,7 @@ handleGarage <- function(data){
 }
 
 handleOutside <- function(data){
-    # data <- checkConsistencyPool(data)
+    data <- checkConsistencyPool(data)
     data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
     data$Fence <- encodeAsFactor(data$Fence, "None")
     data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
@@ -331,10 +332,10 @@ addFeatureCarsXArea <- function(data) {
     data
 }
 
-addFeatureTypeXRecent <- function(data) {
+addFeatureRecentType <- function(data) {
     prices <- data$SalePrice
     data$SalePrice <- NULL
-    data$GarageRecentType <- data$RecentGarage * data$GarageType
+    data$GarageRecentType <- ifelse(data$GarageType=='BA' & data$RecentGarage==1, 1, 0)
     data$SalePrice <- prices
     data
 }
