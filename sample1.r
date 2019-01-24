@@ -87,7 +87,7 @@ getMode <- function(values){
 }
 
 #returns values as factors, filling NAs with the mode or with the specified argument
-getFactors <- function(values, replaceNA = "NA"){
+encodeAsFactor <- function(values, replaceNA = "NA"){
   if(!is.factor(values))
   {
     values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
@@ -97,7 +97,7 @@ getFactors <- function(values, replaceNA = "NA"){
 }
 
 #returns values as integers, enconding them via the given dictionary, filling NAs with the mode or with the specified argument
-getIntegers <- function(values, dictionary, replaceNA = "NA"){
+encodeAsOrdinal <- function(values, dictionary, replaceNA = "NA"){
   if(!is.integer(values))
   {
     values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
@@ -170,8 +170,8 @@ appendDummyVariables <- function(data){
 }
 
 handleRooms <- function(data){
-    data$KitchenQual <- getIntegers(data$KitchenQual, Qualities)
-    data$Functional <- getIntegers(data$Functional, Functional, "Typ")
+    data$KitchenQual <- encodeAsOrdinal(data$KitchenQual, Qualities)
+    data$Functional <- encodeAsOrdinal(data$Functional, Functional, "Typ")
     data$KitchenAbvGr[is.na(data$KitchenAbvGr)] <- 0
     data$FullBath[is.na(data$FullBath)] <- 0
     data$HalfBath[is.na(data$HalfBath)] <- 0
@@ -182,44 +182,44 @@ handleRooms <- function(data){
 
 handleGarage <- function(data){
     #TODO Check consistency among Garage features
-    data$GarageFinish <- getIntegers(data$GarageFinish, GarageFinish, "Miss" )
-    data$GarageQual <- getIntegers(data$GarageQual, Qualities, "None" )
-    data$GarageCond <- getIntegers(data$GarageCond, Qualities, "None" )
+    data$GarageFinish <- encodeAsOrdinal(data$GarageFinish, GarageFinish, "Miss" )
+    data$GarageQual <- encodeAsOrdinal(data$GarageQual, Qualities, "None" )
+    data$GarageCond <- encodeAsOrdinal(data$GarageCond, Qualities, "None" )
     data$GarageCars[is.na(data$GarageCars)] <- 0
     data$GarageYrBlt[is.na(data$GarageYrBlt)] <- 0
     data$GarageArea[is.na(data$GarageArea)] <- 0
     data$GarageType[!(data$GarageType == 'BuiltIn' | data$GarageType=='Attchd')] <- 'OT'
     data$GarageType[data$GarageType == 'BuiltIn' | data$GarageType=='Attchd'] <- 'BA'
-    data$GarageType <- getFactors(data$GarageType, "OT")
+    data$GarageType <- encodeAsFactor(data$GarageType, "OT")
     data
 }
 
 handleOutside <- function(data){
     #TODO Pool Consistency
-    data$PavedDrive <- getIntegers(data$PavedDrive, PavedDrive, "N")
-    data$Fence <- getFactors(data$Fence, "None")
-    data$PoolQC <- getIntegers(data$PoolQC, Qualities, "None")
+    data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
+    data$Fence <- encodeAsFactor(data$Fence, "None")
+    data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
     data$PoolArea[is.na(data$PoolArea)] <- 0
     data
 }
 
 handleSaleBsmtAndYears <- function(data){
-    data$MoSold         <- getFactors(data$MoSold)
-    data$SaleType       <- getFactors(data$SaleType)
-    data$SaleCondition  <- getFactors(data$SaleCondition)
-    data$RoofStyle      <- getFactors(data$RoofStyle)
-    data$RoofMatl       <- getFactors(data$RoofMatl)
-    data$Exterior1st    <- getFactors(data$Exterior1st)
-    data$Exterior2nd    <- getFactors(data$Exterior2nd)
-    data$Foundation     <- getFactors(data$Foundation)
-    data$ExterQual      <- getIntegers(data$ExterQual,Qualities)
-    data$ExterCond      <- getIntegers(data$ExterCond,Qualities)
-    data$MasVnrType     <- getIntegers(data$MasVnrType,Masonry, "None")
-    data$BsmtQual       <- getIntegers(data$BsmtQual,Qualities, "None")
-    data$BsmtCond       <- getIntegers(data$BsmtCond,Qualities, "None")
-    data$BsmtExposure   <- getIntegers(data$BsmtExposure,Exposure, "None")
-    data$BsmtFinType1   <- getIntegers(data$BsmtFinType1,FinType, "None")
-    data$BsmtFinType2   <- getIntegers(data$BsmtFinType2,FinType, "None")
+    data$MoSold         <- encodeAsFactor(data$MoSold)
+    data$SaleType       <- encodeAsFactor(data$SaleType)
+    data$SaleCondition  <- encodeAsFactor(data$SaleCondition)
+    data$RoofStyle      <- encodeAsFactor(data$RoofStyle)
+    data$RoofMatl       <- encodeAsFactor(data$RoofMatl)
+    data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
+    data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
+    data$Foundation     <- encodeAsFactor(data$Foundation)
+    data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
+    data$ExterCond      <- encodeAsOrdinal(data$ExterCond,Qualities)
+    data$MasVnrType     <- encodeAsOrdinal(data$MasVnrType,Masonry, "None")
+    data$BsmtQual       <- encodeAsOrdinal(data$BsmtQual,Qualities, "None")
+    data$BsmtCond       <- encodeAsOrdinal(data$BsmtCond,Qualities, "None")
+    data$BsmtExposure   <- encodeAsOrdinal(data$BsmtExposure,Exposure, "None")
+    data$BsmtFinType1   <- encodeAsOrdinal(data$BsmtFinType1,FinType, "None")
+    data$BsmtFinType2   <- encodeAsOrdinal(data$BsmtFinType2,FinType, "None")
     data$BsmtFinSF1[is.na(data$BsmtFinSF1)] <-0
     data$BsmtFinSF2[is.na(data$BsmtFinSF2)] <-0
     data$BsmtUnfSF[is.na(data$BsmtUnfSF)] <-0
@@ -229,36 +229,36 @@ handleSaleBsmtAndYears <- function(data){
 }
 
 handleLocations <- function(data){
-    data$MSSubClass     <- getFactors(data$MSSubClass)
-    data$MSZoning       <- getFactors(data$MSZoning)
-    data$Street         <- getIntegers(data$Street, AccessType)
-    data$Alley          <- getFactors(data$Alley, "None")
-    data$Neighborhood   <- getFactors(data$Neighborhood)
-    data$Condition1     <- getFactors(data$Condition1)
-    data$Condition2     <- getFactors(data$Condition2)
+    data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
+    data$MSZoning       <- encodeAsFactor(data$MSZoning)
+    data$Street         <- encodeAsOrdinal(data$Street, AccessType)
+    data$Alley          <- encodeAsFactor(data$Alley, "None")
+    data$Neighborhood   <- encodeAsFactor(data$Neighborhood)
+    data$Condition1     <- encodeAsFactor(data$Condition1)
+    data$Condition2     <- encodeAsFactor(data$Condition2)
     data
 }
 
 handleLot <- function(data){
     data                <- getValidFrontages(data)
-    data$LotShape       <- getIntegers(data$LotShape, LotShape)
-    data$LandContour    <- getFactors(data$LandContour)
-    data$LotConfig      <- getFactors(data$LotConfig)
-    data$LandSlope      <- getIntegers(data$LandSlope, LandSlope)
+    data$LotShape       <- encodeAsOrdinal(data$LotShape, LotShape)
+    data$LandContour    <- encodeAsFactor(data$LandContour)
+    data$LotConfig      <- encodeAsFactor(data$LotConfig)
+    data$LandSlope      <- encodeAsOrdinal(data$LandSlope, LandSlope)
     data
 }
 
 handleMisc <- function(data){
-    data$Utilities      <- getIntegers(data$Utilities, Utilities, "None")
-    data$BldgType       <- getFactors(data$BldgType)
-    data$HouseStyle     <- getFactors(data$HouseStyle)
-    data$Heating        <- getFactors(data$Heating)
-    data$HeatingQC      <- getIntegers(data$HeatingQC, Qualities, 'None')
-    data$CentralAir     <- getIntegers(data$CentralAir, CentralAir, 'N')
-    data$Electrical     <- getFactors(data$Electrical)
-    data$FireplaceQu    <- getIntegers(data$FireplaceQu, Qualities, "None")
+    data$Utilities      <- encodeAsOrdinal(data$Utilities, Utilities, "None")
+    data$BldgType       <- encodeAsFactor(data$BldgType)
+    data$HouseStyle     <- encodeAsFactor(data$HouseStyle)
+    data$Heating        <- encodeAsFactor(data$Heating)
+    data$HeatingQC      <- encodeAsOrdinal(data$HeatingQC, Qualities, 'None')
+    data$CentralAir     <- encodeAsOrdinal(data$CentralAir, CentralAir, 'N')
+    data$Electrical     <- encodeAsFactor(data$Electrical)
+    data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
     data                <- getValidMiscFeaturesAndVal(data)
-    data$MiscFeature    <- getFactors(data$MiscFeature, "None")
+    data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")
     data
 }
 
