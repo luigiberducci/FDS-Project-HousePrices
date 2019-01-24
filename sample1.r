@@ -166,9 +166,12 @@ removeFactors <- function(data){
 }
 
 appendDummyVariables <- function(data){
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
     fact <- getFactorData(data)
     dummies <- as.data.frame(model.matrix(~.-1, fact))
     data <- cbind(data, dummies)
+    data$SalePrice <- prices
     data
 }
 
