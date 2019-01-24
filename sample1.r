@@ -32,12 +32,14 @@ fullData <- rbind(train, test)
 location <- c("MSSubClass", "MSZoning", "Street", "Alley", "Neighborhood", "Condition1", "Condition2")
 lot <- c("LotFrontage", "LotArea", "LotShape", "LandContour", "LotConfig", "LandSlope")
 misc <- c("Utilities", "BldgType", "HouseStyle", "Heating", "HeatingQC", "CentralAir", "Electrical", "Fireplaces", "FireplaceQu", "MiscFeature", "MiscVal")
-outside = c("PavedDrive", "Fence", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", "ScreenPorch", "PoolArea", "PoolQC")
-garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
-rooms = c("BedroomAbvGr", "TotRmsAbvGrd")
+outside = c("PavedDrive", "Fence", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", "ScreenPorch") 
 kitchen = c("KitchenAbvGr", "KitchenQual")
 bathrooms = c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath")
 general = c("OverallQual", "OverallCond", "Functional")
+rooms = c("BedroomAbvGr", "TotRmsAbvGrd")
+#POOL AND GARAGE ARE USED IN CHECK CONSISTENCY METHODS
+pool <- c("PoolArea", "PoolQC")
+garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
 
 luigi  <- c(general, bathrooms, kitchen, rooms, garage, outside, 'SalePrice')
 angelo <- c("YearBuilt","YearRemodAdd","MoSold","YrSold","SaleType","SaleCondition","RoofStyle","RoofMatl","Exterior1st","Exterior2nd","MasVnrType","MasVnrArea","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtExposure","BsmtFinType1","BsmtFinSF1","BsmtFinType2","BsmtFinSF2","BsmtUnfSF","TotalBsmtSF","LowQualFinSF","GrLivArea","SalePrice")
@@ -194,7 +196,19 @@ handleGarage <- function(data){
     data
 }
 
+handleOutside <- function(data){
+    # data <- checkConsistencyPool(data)
+    data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
+    data$Fence <- encodeAsFactor(data$Fence, "None")
+    data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
+    data$PoolArea[is.na(data$PoolArea)] <- 0
+    data
+}
+
+
 checkConsistencyGarage <- function(data){
+    data$GarageArea[data$GarageArea==0] <- NA
+    data$GarageCars[data$GarageCars==0] <- NA
     for(i in 1:nrow(data))
         if(currentRowIsGarageInconsistent(data, i)) {
             data$GarageType[i] <- NA
@@ -208,20 +222,28 @@ checkConsistencyGarage <- function(data){
     data
 }
 
-currentRowIsGarageInconsistent <- function(data, i){
-    garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
-    currentData <- data[i, garage]
-    isNA <- sapply(currentData, is.na)
-    TRUE %in% isNA & FALSE %in% isNA
+checkConsistencyPool <- function(data){
+    data$PoolArea[data$PoolArea==0] <- NA
+    for(i in 1:nrow(data))
+        if(currentRowIsPoolInconsistent(data, i)) {
+            data$PoolQC[i] <- NA
+            data$PoolArea[i] <- NA
+        }
+    data
 }
 
-handleOutside <- function(data){
-    #TODO Pool Consistency
-    data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
-    data$Fence <- encodeAsFactor(data$Fence, "None")
-    data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
-    data$PoolArea[is.na(data$PoolArea)] <- 0
-    data
+currentRowIsGarageInconsistent <- function(data, i){
+    currentRowIsInconsistentGivenSetOfFeatures(data, garage, i)
+}
+
+currentRowIsPoolInconsistent <- function(data, i){
+    currentRowIsInconsistentGivenSetOfFeatures(data, pool, i)
+}
+
+currentRowIsInconsistentGivenSetOfFeatures <- function(data, features, i){
+    currentData <- data[i, features]
+    isNA <- sapply(currentData, is.na)
+    TRUE %in% isNA & FALSE %in% isNA
 }
 
 handleSaleBsmtAndYears <- function(data){
