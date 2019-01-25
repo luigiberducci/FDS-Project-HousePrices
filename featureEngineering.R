@@ -25,9 +25,6 @@ luigi  <- c(general, bathrooms, kitchen, rooms, garage, outside, 'SalePrice')
 significative_luigi <- c("OverallQual", "FullBath", "HalfBath", "KitchenQual", "TotRmsAbvGrd", "GarageFinish", "GarageCars", "GarageArea", "GarageCarsTimesArea", "TotBathRms", "RecentGarage1", "GarageRecentType", "GarageTypeOT")
 angelo <- c("YearBuilt","YearRemodAdd","MoSold","YrSold","SaleType","SaleCondition","RoofStyle","RoofMatl","Exterior1st","Exterior2nd","MasVnrType","MasVnrArea","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtExposure","BsmtFinType1","BsmtFinSF1","BsmtFinType2","BsmtFinSF2","BsmtUnfSF","TotalBsmtSF","LowQualFinSF","GrLivArea","SalePrice")
 
-# Control flag for skewness conversion
-skewCorrection <- FALSE
-
 # Helper Functions
 #returns the most important features, estimated via the Boruta technique; can be set up to only work on selected features (default: all) and to meet a certain importance threshold (default: 0)
 applyBoruta <- function(data, features = NULL, threshold = 0){
@@ -352,7 +349,8 @@ featureEngineering <- function(data){
   data <- addFeatureRecentType(data)
   
   data <- correctSkewness(data)
-  # data <- appendDummyVariables(data)
+  data <- appendDummyVariables(data)
+  data <- removeFactors(data)
   data
 }
 

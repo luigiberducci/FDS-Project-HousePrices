@@ -48,12 +48,6 @@ predictSalePrices <- function(model, data){
   predictions
 }
 
-getSimpleLinearModel <- function(data){
-  train <- getTrainData(data)
-  model <- lm(SalePrice ~ ., data=train)
-  model
-}
-
 getTrainData <- function(data){
   train <- data[!is.na(data$SalePrice), ]
   train
@@ -62,4 +56,50 @@ getTrainData <- function(data){
 getTestData <- function(data){
   test <- data[is.na(data$SalePrice), ]
   test
+}
+
+# Models
+
+#simple linear model
+getSimpleLinearModel <- function(data){
+  train <- getTrainData(data)
+  model <- lm(SalePrice ~ ., data=train)
+  model
+}
+
+getLassoModel <- function(data){
+  train <- getTrainData(data)
+  prices <- train$SalePrice
+  train$SalePrice <- NULL
+  
+  control <- trainControl(method="cv", number = 10)
+  grid <- expand.grid(alpha = 1, lambda = 0.0035)
+  model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
+  
+  model
+}
+
+getRidgeModel <- function(data){
+  train <- getTrainData(data)
+  prices <- train$SalePrice
+  train$SalePrice <- NULL
+  
+  control <- trainControl(method="cv", number = 10)
+  grid <- expand.grid(alpha = 0, lambda = 0.004)
+  model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
+  
+  model
+}
+
+#Elastic Net
+getENModel <- function(data){
+  train <- getTrainData(data)
+  prices <- train$SalePrice
+  train$SalePrice <- NULL
+  
+  control <- trainControl(method="cv", number = 10)
+  grid <- expand.grid(alpha = 0.5, lambda = 0.032)
+  model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
+  
+  model
 }

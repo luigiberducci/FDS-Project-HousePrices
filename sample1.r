@@ -20,6 +20,9 @@ library(caret)
 source("featureEngineering.R")
 source("modelTesting.R")
 
+# Control flag for skewness conversion
+skewCorrection <- FALSE
+
 # Dataset
 train   <- read.csv("data/train.csv", stringsAsFactor=FALSE)
 test    <- read.csv("data/test.csv", stringsAsFactor=FALSE)
