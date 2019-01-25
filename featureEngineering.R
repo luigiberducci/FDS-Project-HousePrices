@@ -3,27 +3,18 @@
 # Purpose:  Library for feature engineering the datasets for the House Prices competition from Kaggle
 
 # List of Ordinal variables conversion
-AccessType  <- c("None" = 0, "Grvl" = 1, "Pave" = 2)
-LotShape    <- c("IR3" = 0, "IR2" = 1, "IR1" = 2, "Reg" = 3)
-LandSlope   <- c("Sev" = 0, "Mod" = 1, "Gtl" = 2)
-Utilities   <- c("None" = 0, "ELO" = 1, "NoSeWa" = 2, "NoSewr" = 3, "AllPub" = 4)
-CentralAir  <- c("N" = 0, "Y" = 1)
-Qualities   <- c('None'=0, 'Po' = 1, 'Fa' = 2, 'TA' = 3, 'Gd' = 4, 'Ex' = 5)
-Exposure    <- c('None'=0, 'No'=1, 'Mn'=2, 'Av'=3, 'Gd'=4)
-FinType     <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
-Masonry     <- c('None'=0, 'BrkCmn'=0, 'BrkFace'=1, 'Stone'=2)
-PavedDrive  <- c('Y'=1, 'N'=0, 'P'=0)
-Functional  <- c('Typ'=7, 'Min1'=6, 'Min2'=5, 'Mod'=4, 'Maj1'=3, 'Maj2'=2, 'Sev'=1, 'Sal'=0)
-GarageFinish <- c('Fin'=3, 'RFn'=2, 'Unf'=1, 'Miss'=0)
-
-#POOL AND GARAGE ARE USED IN CHECK CONSISTENCY METHODS
-pool <- c("PoolArea", "PoolQC")
-garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
-
-# are these useful?
-luigi  <- c(general, bathrooms, kitchen, rooms, garage, outside, 'SalePrice')
-significative_luigi <- c("OverallQual", "FullBath", "HalfBath", "KitchenQual", "TotRmsAbvGrd", "GarageFinish", "GarageCars", "GarageArea", "GarageCarsTimesArea", "TotBathRms", "RecentGarage1", "GarageRecentType", "GarageTypeOT")
-angelo <- c("YearBuilt","YearRemodAdd","MoSold","YrSold","SaleType","SaleCondition","RoofStyle","RoofMatl","Exterior1st","Exterior2nd","MasVnrType","MasVnrArea","ExterQual","ExterCond","Foundation","BsmtQual","BsmtCond","BsmtExposure","BsmtFinType1","BsmtFinSF1","BsmtFinType2","BsmtFinSF2","BsmtUnfSF","TotalBsmtSF","LowQualFinSF","GrLivArea","SalePrice")
+AccessType  <- c('None' = 0, 'Grvl' = 1,   'Pave' = 2)
+LotShape    <- c( 'IR3' = 0,  'IR2' = 1,    'IR1' = 2,    'Reg' = 3)
+LandSlope   <- c( 'Sev' = 0,  'Mod' = 1,    'Gtl' = 2)
+Utilities   <- c('None' = 0,  'ELO' = 1, 'NoSeWa' = 2, 'NoSewr' = 3, 'AllPub' = 4)
+CentralAir  <- c(   'N' = 0,    'Y' = 1)
+Qualities   <- c(  'None'=0,   'Po' = 1,     'Fa' = 2,     'TA' = 3, 'Gd' = 4, 'Ex' = 5)
+Exposure    <- c(  'None'=0,     'No'=1,       'Mn'=2,       'Av'=3, 'Gd'=4)
+FinType     <- c(  'None'=0,    'Unf'=1,      'LwQ'=2,      'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
+Masonry     <- c(  'None'=0, 'BrkCmn'=0,  'BrkFace'=1,    'Stone'=2)
+PavedDrive  <- c(     'Y'=1,      'N'=0,        'P'=0)
+Functional  <- c(   'Typ'=7,   'Min1'=6,     'Min2'=5,      'Mod'=4, 'Maj1'=3, 'Maj2'=2, 'Sev'=1, 'Sal'=0)
+GarageFinish <- c(  'Fin'=3,    'RFn'=2,      'Unf'=1,     'Miss'=0)
 
 # Helper Functions
 #returns the most important features, estimated via the Boruta technique; can be set up to only work on selected features (default: all) and to meet a certain importance threshold (default: 0)
@@ -176,11 +167,13 @@ checkConsistencyPool <- function(data){
 }
 
 currentRowIsGarageInconsistent <- function(data, i){
-  currentRowIsInconsistentGivenSetOfFeatures(data, garage, i)
+    garage = c("GarageType", "GarageYrBlt", "GarageFinish", "GarageCars", "GarageArea", "GarageQual", "GarageCond")
+    currentRowIsInconsistentGivenSetOfFeatures(data, garage, i)
 }
 
 currentRowIsPoolInconsistent <- function(data, i){
-  currentRowIsInconsistentGivenSetOfFeatures(data, pool, i)
+    pool <- c("PoolArea", "PoolQC")
+    currentRowIsInconsistentGivenSetOfFeatures(data, pool, i)
 }
 
 currentRowIsInconsistentGivenSetOfFeatures <- function(data, features, i){
