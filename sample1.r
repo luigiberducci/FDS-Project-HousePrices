@@ -143,7 +143,22 @@ getValidMiscFeaturesAndVal <- function(data){
   data
 }
 
+#shows skewness per feature
+showSkewness <- function(data){
+  features <- colnames(data)
+  skewness <- skew(data)
+  fs <- data.frame(Feature = features, Skewness = skewness)
+  fs
+}
+
 # Main functions
+#performs feature engineering and only keeps relevant features
+bootstrap <- function(data){
+  data <- featureEngineering(data)
+  data <- getOnlyRelevantFeatures(data)
+  data
+}
+
 iterateCrossValidationNTimes <- function(data, nTimes){
     finalRes <- data.frame()
     for(i in 1:nTimes){
@@ -199,7 +214,7 @@ getSimpleLinearModel <- function(data){
 getOnlyRelevantFeatures <- function(data) {
     numerical <- removeFactors(data)
     # Maintain the list of features as clear as possible
-    notRelevantEma <- c("MSSubClass", "Utilities", "Street", "Condition2")
+    notRelevantEma <- c("MSSubClass", "Utilities", "Street", "Condition2", "MiscVal", "MiscFeature")
     notRelevantAng <- c("X1stFlrSF","X2ndFlrSF","LowQualFinSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
     notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea")
     notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui)
