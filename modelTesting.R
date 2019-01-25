@@ -43,7 +43,7 @@ predictSalePrices <- function(model, data){
   test <- getTestData(data)
   test$SalePrice <- NULL
   predictions <- predict(model, test)
-  if (skewCorrection==TRUE)
+  if (SKEWCORRECTION==TRUE)
     predictions <- exp(predictions)
   predictions
 }
