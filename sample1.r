@@ -46,7 +46,6 @@ rooms = c("BedroomAbvGr", "TotRmsAbvGrd")
 #performs feature engineering and only keeps relevant features
 bootstrap <- function(data){
     data <- featureEngineering(data)
-    data <- getOnlyRelevantFeatures(data)
     data
 }
 

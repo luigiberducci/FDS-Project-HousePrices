@@ -3,7 +3,7 @@
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
 iterateCrossValidationNTimes <- function(data, nTimes){
-    set.seed(12345)
+    # set.seed(12345)
     finalRes <- data.frame()
     for(i in 1:nTimes){
     currentRes <- crossValidation(data)
@@ -14,7 +14,6 @@ iterateCrossValidationNTimes <- function(data, nTimes){
 
 crossValidation <- function(data){
     # Work only on train data
-    data <- getOnlyRelevantFeatures(data)
     allTrain <- getTrainData(data) 
     
     # Split in train/test data
@@ -28,10 +27,11 @@ crossValidation <- function(data){
     
     # Build the model and predict prices
     model <- getSimpleLinearModel(trainData)
+
     pred  <- predictSalePrices(model, testData)
     res   <- data.frame( R2 = R2(pred, groundTruth),
-                       RMSE = RMSE(pred, groundTruth),
-                       MAE = MAE(pred, groundTruth))
+                         RMSE = RMSE(pred, groundTruth),
+                         MAE = MAE(pred, groundTruth))
     res
 }
 
@@ -45,7 +45,7 @@ predictSalePrices <- function(model, data){
     test$SalePrice <- NULL
     predictions <- predict(model, test)
     if (SKEWCORRECTION==TRUE)
-    predictions <- exp(predictions)
+        predictions <- exp(predictions)
     predictions
 }
 
@@ -63,14 +63,14 @@ getTestData <- function(data){
 
 #simple linear model
 getSimpleLinearModel <- function(data){
-    set.seed(12345)
+    # set.seed(12345)
     train <- getTrainData(data)
     model <- lm(SalePrice ~ ., data=train)
     model
 }
 
 getLassoModel <- function(data){
-    set.seed(12345)
+    # set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
@@ -83,7 +83,7 @@ getLassoModel <- function(data){
 }
 
 getRidgeModel <- function(data){
-    set.seed(12345)
+    # set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
@@ -97,7 +97,7 @@ getRidgeModel <- function(data){
 
 #Elastic Net
 getENModel <- function(data){
-    set.seed(12345)
+    # set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
