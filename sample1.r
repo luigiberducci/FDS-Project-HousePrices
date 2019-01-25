@@ -215,7 +215,7 @@ getOnlyRelevantFeatures <- function(data) {
     numerical <- removeFactors(data)
     # Maintain the list of features as clear as possible
     notRelevantEma <- c("MSSubClass", "Utilities", "Street", "Condition2", "MiscVal", "MiscFeature")
-    notRelevantAng <- c("X1stFlrSF","X2ndFlrSF","LowQualFinSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
+    notRelevantAng <- c("X1stFlrSF","X2ndFlrSF","LowQualFinSF", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
     notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea")
     notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui)
     toRemove <- names(numerical) %in% notRelevant
@@ -253,6 +253,19 @@ featureEngineering <- function(data){
     # data <- appendDummyVariables(data)
     data
 }
+
+#--remove--
+bsmtConsistency <- function(data){
+  data <- getTrainData(data)
+  for(i in 0:nrow(data)){
+    sf1 <- data$BsmtFinSF1[i]
+    sf2 <- data$BsmtFinSF2[i]
+    sf3 <- data$BsmtUnfSF[i]
+    tot <- data$TotalBsmtSF[i]
+    print(sf1+sf2+sf3==tot)
+  }
+}
+#--
 
 correctSkewness <- function(data){
     #Correct skewness on prices
