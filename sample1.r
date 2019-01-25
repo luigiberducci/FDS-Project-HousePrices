@@ -151,6 +151,185 @@ showSkewness <- function(data){
   fs
 }
 
+# Feature engineering-related functions
+handleRooms <- function(data){
+  data$KitchenQual <- encodeAsOrdinal(data$KitchenQual, Qualities)
+  data$Functional <- encodeAsOrdinal(data$Functional, Functional, "Typ")
+  data$KitchenAbvGr[is.na(data$KitchenAbvGr)] <- 0
+  data$FullBath[is.na(data$FullBath)] <- 0
+  data$HalfBath[is.na(data$HalfBath)] <- 0
+  data$BsmtFullBath[is.na(data$BsmtFullBath)] <- 0
+  data$BsmtHalfBath[is.na(data$BsmtHalfBath)] <- 0
+  data
+}
+
+handleGarage <- function(data){
+  data <- checkConsistencyGarage(data)
+  data$GarageFinish <- encodeAsOrdinal(data$GarageFinish, GarageFinish, "Miss" )
+  data$GarageQual <- encodeAsOrdinal(data$GarageQual, Qualities, "None" )
+  data$GarageCond <- encodeAsOrdinal(data$GarageCond, Qualities, "None" )
+  data$GarageCars[is.na(data$GarageCars)] <- 0
+  data$GarageYrBlt[is.na(data$GarageYrBlt)] <- 0
+  data$GarageArea[is.na(data$GarageArea)] <- 0
+  data$GarageType[!(data$GarageType == 'BuiltIn' | data$GarageType=='Attchd')] <- 'OT'
+  data$GarageType[data$GarageType == 'BuiltIn' | data$GarageType=='Attchd'] <- 'BA'
+  data$GarageType <- encodeAsFactor(data$GarageType, "OT")
+  data
+}
+
+handleOutside <- function(data){
+  data <- checkConsistencyPool(data)
+  data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
+  data$Fence <- encodeAsFactor(data$Fence, "None")
+  data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
+  data$PoolArea[is.na(data$PoolArea)] <- 0
+  data
+}
+
+
+checkConsistencyGarage <- function(data){
+  data$GarageArea[data$GarageArea==0] <- NA
+  data$GarageCars[data$GarageCars==0] <- NA
+  for(i in 1:nrow(data))
+    if(currentRowIsGarageInconsistent(data, i)) {
+      data$GarageType[i] <- NA
+      data$GarageQual[i] <- NA
+      data$GarageCond[i] <- NA
+      data$GarageCars[i] <- NA
+      data$GarageArea[i] <- NA
+      data$GarageYrBlt[i] <- NA
+      data$GarageFinish[i] <- NA
+    }
+  data
+}
+
+checkConsistencyPool <- function(data){
+  data$PoolArea[data$PoolArea==0] <- NA
+  for(i in 1:nrow(data))
+    if(currentRowIsPoolInconsistent(data, i)) {
+      data$PoolQC[i] <- NA
+      data$PoolArea[i] <- NA
+    }
+  data
+}
+
+currentRowIsGarageInconsistent <- function(data, i){
+  currentRowIsInconsistentGivenSetOfFeatures(data, garage, i)
+}
+
+currentRowIsPoolInconsistent <- function(data, i){
+  currentRowIsInconsistentGivenSetOfFeatures(data, pool, i)
+}
+
+currentRowIsInconsistentGivenSetOfFeatures <- function(data, features, i){
+  currentData <- data[i, features]
+  isNA <- sapply(currentData, is.na)
+  TRUE %in% isNA & FALSE %in% isNA
+}
+
+handleSaleBsmtAndYears <- function(data){
+  data$MoSold         <- encodeAsFactor(data$MoSold)
+  data$SaleType       <- encodeAsFactor(data$SaleType)
+  data$SaleCondition  <- encodeAsFactor(data$SaleCondition)
+  data$RoofStyle      <- encodeAsFactor(data$RoofStyle)
+  data$RoofMatl       <- encodeAsFactor(data$RoofMatl)
+  data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
+  data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
+  data$Foundation     <- encodeAsFactor(data$Foundation)
+  #Foundation ad Ordinal -> TODO study how change the model using different values for Foundation
+  #data$Foundation<-as.integer(revalue(data$Foundation, c('Slab'=1, 'BrkTil'=1, 'Stone'=1, 'CBlock'=1, 'Wood'=3, 'PConc'=3)))
+  data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
+  data$ExterCond      <- encodeAsOrdinal(data$ExterCond,Qualities)
+  data$MasVnrType     <- encodeAsOrdinal(data$MasVnrType,Masonry, "None")
+  data$BsmtQual       <- encodeAsOrdinal(data$BsmtQual,Qualities, "None")
+  data$BsmtCond       <- encodeAsOrdinal(data$BsmtCond,Qualities, "None")
+  data$BsmtExposure   <- encodeAsOrdinal(data$BsmtExposure,Exposure, "None")
+  data$BsmtFinType1   <- encodeAsOrdinal(data$BsmtFinType1,FinType, "None")
+  data$BsmtFinType2   <- encodeAsOrdinal(data$BsmtFinType2,FinType, "None")
+  #Introducing new features Age, Remod, IsNew
+  data$Age <- as.numeric(data$YrSold)-data$YearRemodAdd
+  data$Remod <- ifelse(data$YearBuilt==data$YearRemodAdd, 0, 1) #0=No Remodeling, 1=Remodeling
+  data$IsNew <- ifelse(data$YrSold==data$YearBuilt, 1, 0) #0=not new, 1=new
+  data$YrSold <- as.factor(data$YrSold) #Numeric version is now not needed anymore
+  data$BsmtFinSF1[is.na(data$BsmtFinSF1)] <-0
+  data$BsmtFinSF2[is.na(data$BsmtFinSF2)] <-0
+  data$BsmtUnfSF[is.na(data$BsmtUnfSF)] <-0
+  data$TotalBsmtSF[is.na(data$TotalBsmtSF)] <-0
+  data$MasVnrArea[is.na(data$MasVnrArea)] <-0
+  #Introducing a new feature TotalSF
+  data$TotalSF <- data$GrLivArea + data$TotalBsmtSF
+  data <- data[-c(524, 1299),] #outliers
+  data
+}
+
+handleLocations <- function(data){
+  data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
+  data$MSZoning       <- encodeAsFactor(data$MSZoning)
+  data$Street         <- encodeAsOrdinal(data$Street, AccessType)
+  data$Alley          <- encodeAsFactor(data$Alley, "None")
+  data$Neighborhood   <- encodeAsFactor(data$Neighborhood)
+  data$Condition1     <- encodeAsFactor(data$Condition1)
+  data$Condition2     <- encodeAsFactor(data$Condition2)
+  data
+}
+
+handleLot <- function(data){
+  data                <- getValidFrontages(data)
+  data$LotShape       <- encodeAsOrdinal(data$LotShape, LotShape)
+  data$LandContour    <- encodeAsFactor(data$LandContour)
+  data$LotConfig      <- encodeAsFactor(data$LotConfig)
+  data$LandSlope      <- encodeAsOrdinal(data$LandSlope, LandSlope)
+  data
+}
+
+handleMisc <- function(data){
+  data$Utilities      <- encodeAsOrdinal(data$Utilities, Utilities, "None")
+  data$BldgType       <- encodeAsFactor(data$BldgType)
+  data$HouseStyle     <- encodeAsFactor(data$HouseStyle)
+  data$Heating        <- encodeAsFactor(data$Heating)
+  data$HeatingQC      <- encodeAsOrdinal(data$HeatingQC, Qualities, 'None')
+  data$CentralAir     <- encodeAsOrdinal(data$CentralAir, CentralAir, 'N')
+  data$Electrical     <- encodeAsFactor(data$Electrical)
+  data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
+  data                <- getValidMiscFeaturesAndVal(data)
+  data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")
+  data
+}
+
+addFeatureBathrooms <- function(data){
+  prices <- data$SalePrice
+  data$SalePrice <- NULL
+  data$TotBathRms <- data$BsmtFullBath + 0.5*data$BsmtHalfBath + data$FullBath + 0.5*data$HalfBath
+  data$SalePrice <- prices
+  data
+}
+
+addFeatureRecentGarage <- function(data) {
+  prices <- data$SalePrice
+  data$SalePrice <- NULL
+  data$RecentGarage[data$GarageYrBlt < 2000] <- 0
+  data$RecentGarage[data$GarageYrBlt >= 2000] <- 1
+  data$RecentGarage <- as.factor(data$RecentGarage)
+  data$SalePrice <- prices
+  data
+}
+
+addFeatureCarsXArea <- function(data) {
+  prices <- data$SalePrice
+  data$SalePrice <- NULL
+  data$GarageCarsTimesArea <- data$GarageCars * data$GarageArea
+  data$SalePrice <- prices
+  data
+}
+
+addFeatureRecentType <- function(data) {
+  prices <- data$SalePrice
+  data$SalePrice <- NULL
+  data$GarageRecentType <- ifelse(data$GarageType=='BA' & data$RecentGarage==1, 1, 0)
+  data$SalePrice <- prices
+  data
+}
+
 # Main functions
 #performs feature engineering and only keeps relevant features
 bootstrap <- function(data){
@@ -264,6 +443,8 @@ correctSkewness <- function(data){
     data
 }
 
+# Factor one-hot encoding functions
+
 removeFactors <- function(data){
     factNames <- getFactorFields(data)
     data <- data[!(names(data) %in% factNames)]
@@ -276,184 +457,6 @@ appendDummyVariables <- function(data){
     fact <- getFactorData(data)
     dummies <- as.data.frame(model.matrix(~.-1, fact))
     data <- cbind(data, dummies)
-    data$SalePrice <- prices
-    data
-}
-
-handleRooms <- function(data){
-    data$KitchenQual <- encodeAsOrdinal(data$KitchenQual, Qualities)
-    data$Functional <- encodeAsOrdinal(data$Functional, Functional, "Typ")
-    data$KitchenAbvGr[is.na(data$KitchenAbvGr)] <- 0
-    data$FullBath[is.na(data$FullBath)] <- 0
-    data$HalfBath[is.na(data$HalfBath)] <- 0
-    data$BsmtFullBath[is.na(data$BsmtFullBath)] <- 0
-    data$BsmtHalfBath[is.na(data$BsmtHalfBath)] <- 0
-    data
-}
-
-handleGarage <- function(data){
-    data <- checkConsistencyGarage(data)
-    data$GarageFinish <- encodeAsOrdinal(data$GarageFinish, GarageFinish, "Miss" )
-    data$GarageQual <- encodeAsOrdinal(data$GarageQual, Qualities, "None" )
-    data$GarageCond <- encodeAsOrdinal(data$GarageCond, Qualities, "None" )
-    data$GarageCars[is.na(data$GarageCars)] <- 0
-    data$GarageYrBlt[is.na(data$GarageYrBlt)] <- 0
-    data$GarageArea[is.na(data$GarageArea)] <- 0
-    data$GarageType[!(data$GarageType == 'BuiltIn' | data$GarageType=='Attchd')] <- 'OT'
-    data$GarageType[data$GarageType == 'BuiltIn' | data$GarageType=='Attchd'] <- 'BA'
-    data$GarageType <- encodeAsFactor(data$GarageType, "OT")
-    data
-}
-
-handleOutside <- function(data){
-    data <- checkConsistencyPool(data)
-    data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
-    data$Fence <- encodeAsFactor(data$Fence, "None")
-    data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
-    data$PoolArea[is.na(data$PoolArea)] <- 0
-    data
-}
-
-
-checkConsistencyGarage <- function(data){
-    data$GarageArea[data$GarageArea==0] <- NA
-    data$GarageCars[data$GarageCars==0] <- NA
-    for(i in 1:nrow(data))
-        if(currentRowIsGarageInconsistent(data, i)) {
-            data$GarageType[i] <- NA
-            data$GarageQual[i] <- NA
-            data$GarageCond[i] <- NA
-            data$GarageCars[i] <- NA
-            data$GarageArea[i] <- NA
-            data$GarageYrBlt[i] <- NA
-            data$GarageFinish[i] <- NA
-        }
-    data
-}
-
-checkConsistencyPool <- function(data){
-    data$PoolArea[data$PoolArea==0] <- NA
-    for(i in 1:nrow(data))
-        if(currentRowIsPoolInconsistent(data, i)) {
-            data$PoolQC[i] <- NA
-            data$PoolArea[i] <- NA
-        }
-    data
-}
-
-currentRowIsGarageInconsistent <- function(data, i){
-    currentRowIsInconsistentGivenSetOfFeatures(data, garage, i)
-}
-
-currentRowIsPoolInconsistent <- function(data, i){
-    currentRowIsInconsistentGivenSetOfFeatures(data, pool, i)
-}
-
-currentRowIsInconsistentGivenSetOfFeatures <- function(data, features, i){
-    currentData <- data[i, features]
-    isNA <- sapply(currentData, is.na)
-    TRUE %in% isNA & FALSE %in% isNA
-}
-
-handleSaleBsmtAndYears <- function(data){
-    data$MoSold         <- encodeAsFactor(data$MoSold)
-    data$SaleType       <- encodeAsFactor(data$SaleType)
-    data$SaleCondition  <- encodeAsFactor(data$SaleCondition)
-    data$RoofStyle      <- encodeAsFactor(data$RoofStyle)
-    data$RoofMatl       <- encodeAsFactor(data$RoofMatl)
-    data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
-    data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
-    data$Foundation     <- encodeAsFactor(data$Foundation)
-    #Foundation ad Ordinal -> TODO study how change the model using different values for Foundation
-    #data$Foundation<-as.integer(revalue(data$Foundation, c('Slab'=1, 'BrkTil'=1, 'Stone'=1, 'CBlock'=1, 'Wood'=3, 'PConc'=3)))
-    data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
-    data$ExterCond      <- encodeAsOrdinal(data$ExterCond,Qualities)
-    data$MasVnrType     <- encodeAsOrdinal(data$MasVnrType,Masonry, "None")
-    data$BsmtQual       <- encodeAsOrdinal(data$BsmtQual,Qualities, "None")
-    data$BsmtCond       <- encodeAsOrdinal(data$BsmtCond,Qualities, "None")
-    data$BsmtExposure   <- encodeAsOrdinal(data$BsmtExposure,Exposure, "None")
-    data$BsmtFinType1   <- encodeAsOrdinal(data$BsmtFinType1,FinType, "None")
-    data$BsmtFinType2   <- encodeAsOrdinal(data$BsmtFinType2,FinType, "None")
-    #Introducing new features Age, Remod, IsNew
-    data$Age <- as.numeric(data$YrSold)-data$YearRemodAdd
-	  data$Remod <- ifelse(data$YearBuilt==data$YearRemodAdd, 0, 1) #0=No Remodeling, 1=Remodeling
-	  data$IsNew <- ifelse(data$YrSold==data$YearBuilt, 1, 0) #0=not new, 1=new
-    data$YrSold <- as.factor(data$YrSold) #Numeric version is now not needed anymore
-    data$BsmtFinSF1[is.na(data$BsmtFinSF1)] <-0
-    data$BsmtFinSF2[is.na(data$BsmtFinSF2)] <-0
-    data$BsmtUnfSF[is.na(data$BsmtUnfSF)] <-0
-    data$TotalBsmtSF[is.na(data$TotalBsmtSF)] <-0
-    data$MasVnrArea[is.na(data$MasVnrArea)] <-0
-    #Introducing a new feature TotalSF
-    data$TotalSF <- data$GrLivArea + data$TotalBsmtSF
-    data <- data[-c(524, 1299),] #outliers
-    data
-}
-
-handleLocations <- function(data){
-    data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
-    data$MSZoning       <- encodeAsFactor(data$MSZoning)
-    data$Street         <- encodeAsOrdinal(data$Street, AccessType)
-    data$Alley          <- encodeAsFactor(data$Alley, "None")
-    data$Neighborhood   <- encodeAsFactor(data$Neighborhood)
-    data$Condition1     <- encodeAsFactor(data$Condition1)
-    data$Condition2     <- encodeAsFactor(data$Condition2)
-    data
-}
-
-handleLot <- function(data){
-    data                <- getValidFrontages(data)
-    data$LotShape       <- encodeAsOrdinal(data$LotShape, LotShape)
-    data$LandContour    <- encodeAsFactor(data$LandContour)
-    data$LotConfig      <- encodeAsFactor(data$LotConfig)
-    data$LandSlope      <- encodeAsOrdinal(data$LandSlope, LandSlope)
-    data
-}
-
-handleMisc <- function(data){
-    data$Utilities      <- encodeAsOrdinal(data$Utilities, Utilities, "None")
-    data$BldgType       <- encodeAsFactor(data$BldgType)
-    data$HouseStyle     <- encodeAsFactor(data$HouseStyle)
-    data$Heating        <- encodeAsFactor(data$Heating)
-    data$HeatingQC      <- encodeAsOrdinal(data$HeatingQC, Qualities, 'None')
-    data$CentralAir     <- encodeAsOrdinal(data$CentralAir, CentralAir, 'N')
-    data$Electrical     <- encodeAsFactor(data$Electrical)
-    data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
-    data                <- getValidMiscFeaturesAndVal(data)
-    data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")
-    data
-}
-
-addFeatureBathrooms <- function(data){
-    prices <- data$SalePrice
-    data$SalePrice <- NULL
-    data$TotBathRms <- data$BsmtFullBath + 0.5*data$BsmtHalfBath + data$FullBath + 0.5*data$HalfBath
-    data$SalePrice <- prices
-    data
-}
-
-addFeatureRecentGarage <- function(data) {
-    prices <- data$SalePrice
-    data$SalePrice <- NULL
-    data$RecentGarage[data$GarageYrBlt < 2000] <- 0
-    data$RecentGarage[data$GarageYrBlt >= 2000] <- 1
-    data$RecentGarage <- as.factor(data$RecentGarage)
-    data$SalePrice <- prices
-    data
-}
-
-addFeatureCarsXArea <- function(data) {
-    prices <- data$SalePrice
-    data$SalePrice <- NULL
-    data$GarageCarsTimesArea <- data$GarageCars * data$GarageArea
-    data$SalePrice <- prices
-    data
-}
-
-addFeatureRecentType <- function(data) {
-    prices <- data$SalePrice
-    data$SalePrice <- NULL
-    data$GarageRecentType <- ifelse(data$GarageType=='BA' & data$RecentGarage==1, 1, 0)
     data$SalePrice <- prices
     data
 }
