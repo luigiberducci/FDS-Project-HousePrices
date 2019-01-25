@@ -254,25 +254,13 @@ featureEngineering <- function(data){
     data
 }
 
-#--remove--
-bsmtConsistency <- function(data){
-  data <- getTrainData(data)
-  for(i in 0:nrow(data)){
-    sf1 <- data$BsmtFinSF1[i]
-    sf2 <- data$BsmtFinSF2[i]
-    sf3 <- data$BsmtUnfSF[i]
-    tot <- data$TotalBsmtSF[i]
-    print(sf1+sf2+sf3==tot)
-  }
-}
-#--
-
 correctSkewness <- function(data){
     #Correct skewness on prices
     skewCorrection <- TRUE
     data$SalePrice <- log(data$SalePrice)
     #Correct skewness on other fields
-    # TODO
+    data$LotArea <- log(data$LotArea)
+    data$PoolArea <- log(data$PoolArea+1)
     data
 }
 
