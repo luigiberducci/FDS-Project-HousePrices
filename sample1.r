@@ -20,9 +20,6 @@ library(caret)
 source("featureEngineering.R")
 source("modelTesting.R")
 
-# Control flag for skewness conversion
-skewCorrection <- FALSE
-
 # Dataset
 train   <- read.csv("data/train.csv", stringsAsFactor=FALSE)
 test    <- read.csv("data/test.csv", stringsAsFactor=FALSE)
@@ -48,9 +45,9 @@ rooms = c("BedroomAbvGr", "TotRmsAbvGrd")
 # Main functions
 #performs feature engineering and only keeps relevant features
 bootstrap <- function(data){
-  data <- featureEngineering(data)
-  data <- getOnlyRelevantFeatures(data)
-  data
+    data <- featureEngineering(data)
+    data <- getOnlyRelevantFeatures(data)
+    data
 }
 
 # here instructions to automatically perform bootstrapping, test on real test set and saving predictions to file

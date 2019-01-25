@@ -16,6 +16,9 @@ PavedDrive  <- c(     'Y'=1,      'N'=0,        'P'=0)
 Functional  <- c(   'Typ'=7,   'Min1'=6,     'Min2'=5,      'Mod'=4, 'Maj1'=3, 'Maj2'=2, 'Sev'=1, 'Sal'=0)
 GarageFinish <- c(  'Fin'=3,    'RFn'=2,      'Unf'=1,     'Miss'=0)
 
+# FLAG TO CONTROL SKEW CORRECTION
+SKEWCORRECTION <<- FALSE
+
 # Helper Functions
 #returns the most important features, estimated via the Boruta technique; can be set up to only work on selected features (default: all) and to meet a certain importance threshold (default: 0)
 applyBoruta <- function(data, features = NULL, threshold = 0){
@@ -314,10 +317,9 @@ getFactorFields <- function(data) {
 }
 
 # Main functions
-
 correctSkewness <- function(data){
   #Correct skewness on prices
-  skewCorrection <- TRUE
+  SKEWCORRECTION <<- TRUE
   data$SalePrice <- log(data$SalePrice)
   #Correct skewness on other fields
   data$LotArea <- log(data$LotArea)
