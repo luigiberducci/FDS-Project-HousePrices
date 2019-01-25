@@ -50,14 +50,4 @@ bootstrap <- function(data){
   data
 }
 
-getTrainData <- function(data){
-    train <- data[!is.na(data$SalePrice), ]
-    train
-}
-
-getTestData <- function(data){
-    test <- data[is.na(data$SalePrice), ]
-    test
-}
-
 # here instructions to automatically perform bootstrapping, test on real test set and saving predictions to file

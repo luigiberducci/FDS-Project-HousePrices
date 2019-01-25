@@ -53,3 +53,13 @@ getSimpleLinearModel <- function(data){
   model <- lm(SalePrice ~ ., data=train)
   model
 }
+
+getTrainData <- function(data){
+  train <- data[!is.na(data$SalePrice), ]
+  train
+}
+
+getTestData <- function(data){
+  test <- data[is.na(data$SalePrice), ]
+  test
+}
