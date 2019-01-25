@@ -15,6 +15,7 @@ library(Rmisc)
 library(ggrepel)
 library(psych)
 library(xgboost)
+library(caret)
 
 # Dataset
 train   <- read.csv("data/train.csv", stringsAsFactor=FALSE)
@@ -58,6 +59,9 @@ Masonry     <- c('None'=0, 'BrkCmn'=0, 'BrkFace'=1, 'Stone'=2)
 PavedDrive  <- c('Y'=1, 'N'=0, 'P'=0)
 Functional  <- c('Typ'=7, 'Min1'=6, 'Min2'=5, 'Mod'=4, 'Maj1'=3, 'Maj2'=2, 'Sev'=1, 'Sal'=0)
 GarageFinish <- c('Fin'=3, 'RFn'=2, 'Unf'=1, 'Miss'=0)
+
+# Control flag for skewness conversion
+skewPricesFlag <- FALSE
 
 # Helper Functions
 #returns the most important features, estimated via the Boruta technique; can be set up to only work on selected features (default: all) and to meet a certain importance threshold (default: 0)
@@ -140,31 +144,78 @@ getValidMiscFeaturesAndVal <- function(data){
 }
 
 # Main functions
+iterateCrossValidationNTimes <- function(data, nTimes){
+    finalRes <- data.frame()
+    for(i in 1:nTimes){
+        currentRes <- crossValidation(data)
+        finalRes <- rbind(finalRes, currentRes)
+    }
+    finalRes
+}
+
+crossValidation <- function(data){
+    # Work only on train data
+    data <- getOnlyRelevantFeatures(data)
+    allTrain <- getTrainData(data) 
+
+    # Split in train/test data
+    trainSamples <- allTrain$SalePrice %>% createDataPartition(p=0.8, list=FALSE)
+    trainData <- allTrain[trainSamples, ]
+    testData  <- allTrain[-trainSamples, ]
+
+    # Save the groundtruth to future comparison
+    groundTruth <- testData$SalePrice
+    testData$SalePrice <- NA
+
+    # Build the model and predict prices
+    model <- getSimpleLinearModel(trainData)
+    pred  <- predictSalePrices(model, testData)
+    res   <- data.frame( R2 = R2(pred, groundTruth),
+                         RMSE = RMSE(pred, groundTruth),
+                         MAE = MAE(pred, groundTruth))
+    res
+}
+
 savePredictionsOnFile <- function(ids, pred, outputPath){
     predictionDF <- data.frame(Id = ids, SalePrice = pred)
     write.csv(predictionDF, file = outputPath, row.names = FALSE)
 }
 
 predictSalePrices <- function(model, data){
-    test <- data[is.na(data$SalePrice),]
+    test <- getTestData(data)
     test$SalePrice <- NULL
     predictions <- predict(model, test)
+    if (skewPricesFlag==TRUE)
+        predictions <- exp(predictions)
     predictions
 }
 
 getSimpleLinearModel <- function(data){
-    train <- data[!is.na(data$SalePrice),]
+    train <- getTrainData(data)
     model <- lm(SalePrice ~ ., data=train)
     model
 }
 
 getOnlyRelevantFeatures <- function(data) {
     numerical <- removeFactors(data)
-    notRelevant <- c("MSSubClass","X1stFlrSF","X2ndFlrSF","LowQualFinSF", "Condition2", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea", "Utilities", "Street", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
-    # notRelevant <- c('MasVnrType', 'MasVnrArea', 'Utilities', 'X1stFlrSF', 'X2ndFlrSF', 'LotShape', 'LotFrontage', 'LandSlope', 'YearRemodAdd', 'ExterCond', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF', 'CentralAir', 'LowQualFinSF', 'BsmtFullBath', 'BsmtHalfBath', 'FullBath', 'HalfBath', 'Functional', 'Fireplaces', 'FireplaceQu', 'GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageQual', 'GarageCond', 'PavedDrive', 'WoodDeckSF','OpenPorchSF', 'EnclosedPorch', 'X3SsnPorch', 'ScreenPorch', 'PoolArea','PoolQC', 'MiscVal', 'YrSold')
+    # Maintain the list of features as clear as possible
+    notRelevantEma <- c("MSSubClass","X1stFlrSF","X2ndFlrSF","LowQualFinSF", "Condition2")
+    notRelevantAng <- c("Utilities", "Street", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
+    notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea")
+    notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui)
     toRemove <- names(numerical) %in% notRelevant
     relevant <- numerical[!toRemove]
     relevant
+}
+
+getTrainData <- function(data){
+    train <- data[!is.na(data$SalePrice), ]
+    train
+}
+
+getTestData <- function(data){
+    test <- data[is.na(data$SalePrice), ]
+    test
 }
 
 featureEngineering <- function(data){
@@ -183,7 +234,17 @@ featureEngineering <- function(data){
     data <- addFeatureCarsXArea(data)
     data <- addFeatureRecentType(data)
 
+    data <- correctSkewness(data)
     # data <- appendDummyVariables(data)
+    data
+}
+
+correctSkewness <- function(data){
+    #Correct skewness on prices
+    skewPricesFlag <- TRUE
+    data$SalePrice <- log(data$SalePrice)
+    #Correct skewness on other fields
+    # TODO
     data
 }
 
