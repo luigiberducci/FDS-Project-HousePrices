@@ -61,7 +61,7 @@ Functional  <- c('Typ'=7, 'Min1'=6, 'Min2'=5, 'Mod'=4, 'Maj1'=3, 'Maj2'=2, 'Sev'
 GarageFinish <- c('Fin'=3, 'RFn'=2, 'Unf'=1, 'Miss'=0)
 
 # Control flag for skewness conversion
-skewPricesFlag <- FALSE
+skewCorrection <- FALSE
 
 # Helper Functions
 #returns the most important features, estimated via the Boruta technique; can be set up to only work on selected features (default: all) and to meet a certain importance threshold (default: 0)
@@ -185,7 +185,7 @@ predictSalePrices <- function(model, data){
     test <- getTestData(data)
     test$SalePrice <- NULL
     predictions <- predict(model, test)
-    if (skewPricesFlag==TRUE)
+    if (skewCorrection==TRUE)
         predictions <- exp(predictions)
     predictions
 }
@@ -199,8 +199,8 @@ getSimpleLinearModel <- function(data){
 getOnlyRelevantFeatures <- function(data) {
     numerical <- removeFactors(data)
     # Maintain the list of features as clear as possible
-    notRelevantEma <- c("MSSubClass","X1stFlrSF","X2ndFlrSF","LowQualFinSF", "Condition2")
-    notRelevantAng <- c("Utilities", "Street", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
+    notRelevantEma <- c("MSSubClass", "Utilities", "Street", "Condition2")
+    notRelevantAng <- c("X1stFlrSF","X2ndFlrSF","LowQualFinSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
     notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea")
     notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui)
     toRemove <- names(numerical) %in% notRelevant
@@ -241,7 +241,7 @@ featureEngineering <- function(data){
 
 correctSkewness <- function(data){
     #Correct skewness on prices
-    skewPricesFlag <- TRUE
+    skewCorrection <- TRUE
     data$SalePrice <- log(data$SalePrice)
     #Correct skewness on other fields
     # TODO
