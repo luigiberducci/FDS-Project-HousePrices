@@ -2,17 +2,17 @@
 # Date:     January 2019
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
-iterateCrossValidationNTimes <- function(data, nTimes){
+iterateCrossValidationNTimes <- function(model, data, nTimes){
     # set.seed(12345)
     finalRes <- data.frame()
     for(i in 1:nTimes){
-    currentRes <- crossValidation(data)
+    currentRes <- crossValidation(model, data)
     finalRes <- rbind(finalRes, currentRes)
     }
     finalRes
 }
 
-crossValidation <- function(data){
+crossValidation <- function(model, data){
     # Work only on train data
     allTrain <- getTrainData(data) 
     
@@ -26,7 +26,7 @@ crossValidation <- function(data){
     testData$SalePrice <- NA
     
     # Build the model and predict prices
-    model <- getSimpleLinearModel(trainData)
+    #model <- getSimpleLinearModel(trainData)
 
     pred  <- predictSalePrices(model, testData)
     res   <- data.frame( R2 = R2(pred, groundTruth),
@@ -63,27 +63,27 @@ getTestData <- function(data){
 
 #simple linear model
 getSimpleLinearModel <- function(data){
-    # set.seed(12345)
+    set.seed(12345)
     train <- getTrainData(data)
     model <- lm(SalePrice ~ ., data=train)
     model
 }
 
 getLassoModel <- function(data){
-    # set.seed(12345)
+    set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 10)
-    grid <- expand.grid(alpha = 1, lambda = 0.0045)
+    grid <- expand.grid(alpha = 1, lambda = 0.001)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
     
     model
 }
 
 getRidgeModel <- function(data){
-    # set.seed(12345)
+    set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
@@ -97,13 +97,13 @@ getRidgeModel <- function(data){
 
 #Elastic Net
 getENModel <- function(data){
-    # set.seed(12345)
+    set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 10)
-    grid <- expand.grid(alpha = 0.5, lambda = 0.0085)
+    grid <- expand.grid(alpha = 0.5, lambda = 0.0015)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
     
     model

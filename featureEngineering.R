@@ -408,7 +408,7 @@ getOnlyRelevantFeatures <- function(data) {
   # notRelevantEma <- c("Utilities", "Street", "Condition2", "MiscVal", "MiscFeature") 
   # notRelevantAng <- c("X1stFlrSF","X2ndFlrSF","LowQualFinSF", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
   notRelevantAng <- c("RoofStyle", "RoofMatl", "Exterior1st", "Exterior2nd", "Foundation", "X1stFlrSF","X2ndFlrSF","LowQualFinSF", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd", "Heating", "Electrical", "MoSold", "SaleType", "SaleCondition", "YrSold")
-  notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea", "Fence")
+  notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea", "Fence", "WoodDeckSF", "OpenPorchSF", "EnclosedPorchSF", "X3SsnPorch", "ScreenPorch")
   multicollinear <- c("PoolArea", "GarageCond", "Fireplaces")
   notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui, multicollinear)
   toRemove <- names(numerical) %in% notRelevant
