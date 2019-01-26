@@ -3,11 +3,10 @@
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
 iterateCrossValidationNTimes <- function(model, data, nTimes){
-    # set.seed(12345)
     finalRes <- data.frame()
     for(i in 1:nTimes){
-    currentRes <- crossValidation(model, data)
-    finalRes <- rbind(finalRes, currentRes)
+        currentRes <- crossValidation(model, data)
+        finalRes <- rbind(finalRes, currentRes)
     }
     finalRes
 }
@@ -21,14 +20,14 @@ crossValidation <- function(model, data){
     trainData <- allTrain[trainSamples, ]
     testData  <- allTrain[-trainSamples, ]
     
-    # Save the groundtruth to future comparison
+    # Save the groundtruth to future comparison -- 
     groundTruth <- testData$SalePrice
     testData$SalePrice <- NA
     
-    # Build the model and predict prices
+    # Build the model and predict prices -- now taken in input
     #model <- getSimpleLinearModel(trainData)
 
-    pred  <- predictSalePrices(model, testData)
+    pred  <- predictSalePrices(model, testData, F) #fixes the obscene RMSE/MAE scores given as output (comparison of log SalePrice vs SalePrice)
     res   <- data.frame( R2 = R2(pred, groundTruth),
                          RMSE = RMSE(pred, groundTruth),
                          MAE = MAE(pred, groundTruth))
@@ -40,11 +39,11 @@ savePredictionsOnFile <- function(ids, pred, outputPath){
     write.csv(predictionDF, file = outputPath, row.names = FALSE)
 }
 
-predictSalePrices <- function(model, data){
+predictSalePrices <- function(model, data, checkSkew = T){
     test <- getTestData(data)
     test$SalePrice <- NULL
     predictions <- predict(model, test)
-    if (SKEWCORRECTION==TRUE)
+    if (checkSkew == T && SKEWCORRECTION==TRUE)
         predictions <- exp(predictions)
     predictions
 }
