@@ -16,6 +16,7 @@ library(ggrepel)
 library(psych)
 library(xgboost)
 library(caret)
+library(neuralnet)
 
 source("featureEngineering.R")
 source("modelTesting.R")
