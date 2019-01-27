@@ -55,7 +55,7 @@ predictSalePrices <- function(model, data, checkSkew = T){
 
 #for neural network models only
 predictNeuralSalePrices <- function(model, data, checkSkew = T, isDataScaled = F, maxPrice = 0, minPrice = 0){
-    test <- getTestData(data, !isDataScaled)
+    test <- getTestData(data, scaled = !isDataScaled)
     test$SalePrice <- NULL
     
     if(maxPrice == 0)
@@ -63,9 +63,9 @@ predictNeuralSalePrices <- function(model, data, checkSkew = T, isDataScaled = F
     
     if(minPrice == 0)
         minPrice <- min(data$SalePrice, na.rm = T)
-    
-    predictions <- compute(model, test)
-    predictions <- predictions$net.result * (maxPrice - minPrice) + minPrice
+
+    predictions <- predict(model, test)
+    predictions <- predictions * (maxPrice - minPrice) + minPrice
     
     if (checkSkew == T && SKEWCORRECTION==TRUE)
         predictions <- exp(predictions)
@@ -133,7 +133,7 @@ getRidgeModel <- function(data){
     model
 }
 
-#Elastic Net
+#Elastic Net model
 getENModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data)
@@ -151,10 +151,33 @@ getENModel <- function(data){
 getNeuralModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data, scaled = T)
+    prices <- train$SalePrice
+    train$SalePrice <- NULL
     
-    n <- names(train)
-    f <- as.formula(paste("SalePrice ~", paste(n[!n %in% "SalePrice"], collapse = " + ")))
-    model <- neuralnet(f, data = train, hidden = c(5,3), linear.output = T)
+    control <- trainControl(method="cv", number = 5)
+    grid <- expand.grid(size = 7, #seq(1:10),
+                        decay = 0.1) #seq(0.1, 0.5, by = 0.05))
+    model <- train(x = train, y = prices, method = "nnet", trControl = control, tuneGrid = grid, trace = F, linout = T)
+    
+    model
+}
 
+#Extreme Gradient Boosting model
+getGradientBoostingModel <- function(data){
+    set.seed(12345)
+    train <- getTrainData(data)
+    prices <- train$SalePrice
+    train$SalePrice <- NULL
+    
+    control <- trainControl(method="cv", number = 10)
+    grid <- expand.grid(nrounds = 300, #c(100,200,300),
+                        max_depth = 6, #c(3:7),
+                        eta = 0.05, #c(0.05, 1),
+                        gamma = c(0.01),
+                        colsample_bytree = c(0.75),
+                        subsample = c(0.50),
+                        min_child_weight = c(0))
+    model <- train(x = train, y = prices, method = "xgbTree", trControl = control, tuneGrid = grid, allowParallel = T)
+    
     model
 }
