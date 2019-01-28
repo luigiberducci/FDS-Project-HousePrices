@@ -66,7 +66,7 @@ bootstrap2 <- function(data){
     
     #log prices
     data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
-    SKEWCORRECTION <- TRUE
+    SKEWCORRECTION <<- TRUE
 
     #checking skewness
     factors <- getFactorFields(data)
