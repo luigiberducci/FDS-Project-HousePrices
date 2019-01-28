@@ -51,6 +51,15 @@ bootstrap <- function(data){
 }
 
 bootstrap2 <- function(data){
+    #removing outliers
+    data <- data %>%
+        filter(SalePrice < 600000) %>%                              #4 houses
+        filter(LotFrontage <= 200) %>%                              #2 houses
+        filter(LotArea <= 100000) %>%                               #4 houses
+        filter(Fireplaces < 3) %>%                                  #5 houses
+        filter(!(MiscFeature %in% c("TenC", "Othr", "Gar2"))) %>%   #4 houses
+        filter(MiscVal < 5000)                                      #2 houses
+    
     data <- handleLocations2(data)
     data <- handleLot(data)
     data <- handleMisc2(data)
@@ -68,11 +77,12 @@ bootstrap2 <- function(data){
     data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
     SKEWCORRECTION <<- TRUE
 
-    #checking skewness
+    #checking skewness and applying BoxCox transformation to skewed features
     factors <- getFactorFields(data)
-    numericFeats <- names(which(sapply(data, is.integer)))
+    numericFeats <- names(which(sapply(data, is.numeric)))
+    numericFeats <- numericFeats[numericFeats != "SalePrice"]
     numericData <- data[numericFeats]
-    skewness <- showSkewness(numericData)
+    skewness <- showSkewness(numericData) %>% filter(!is.nan(Skewness))
     skewFeats <- skewness$Feature[abs(skewness$Skewness) > 0.65]
     skewFeats <- setdiff(skewFeats, factors)
     transformation <- preProcess(data[skewFeats], method = "BoxCox")
