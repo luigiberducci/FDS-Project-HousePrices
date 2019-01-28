@@ -2,6 +2,8 @@
 # Date:     January 2019
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
+library(MASS)
+
 iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, neuralModel = F){
     #compute max and min SalePrice to scale back NN's predictions
     maxPrice <- 0
@@ -121,6 +123,50 @@ getSimpleLinearModel <- function(data){
     model <- lm(SalePrice ~ ., data=train)
 
     model
+}
+
+# Linear model with feature selection using 'backward model selection'
+############ DON'T RUN IT BECAUSE IT TAKES A LONG TIME ##############
+getLinearModelWithBackwardSelection <- function(data, AREYOUSURE=F){
+    train <- getTrainData(data)
+    if (AREYOUSURE){
+        simpleLM <- lm(SalePrice ~ ., data=train)
+        backwardModel <- stepAIC(simpleLM, direction='backward')
+    } else{
+        backwardModel <- lm(formula = SalePrice ~ LotFrontage + LotArea + Street + Utilities +
+        OverallQual + OverallCond + YearBuilt + YearRemodAdd + MasVnrArea +
+        BsmtExposure + BsmtFinType1 + BsmtFinSF1 + BsmtFinSF2 + BsmtUnfSF +
+        HeatingQC + CentralAir + X2ndFlrSF + GrLivArea + BsmtFullBath +
+        FullBath + HalfBath + BedroomAbvGr + KitchenAbvGr + KitchenQual +
+        Functional + Fireplaces + GarageType + GarageYrBlt + GarageCars +
+        GarageQual + PavedDrive + WoodDeckSF + ScreenPorch + PoolQC +
+        MSSubClass20 + MSSubClass30 + MSSubClass50 + MSSubClass60 +
+        MSSubClass70 + MSSubClass80 + MSSubClass85 + MSSubClass90 +
+        MSSubClass120 + MSSubClass180 + MSZoningFV + MSZoningRH +
+        MSZoningRL + MSZoningRM + AlleyPave + LandContourHLS + LandContourLvl +
+        LotConfigCulDSac + LotConfigFR2 + LotConfigFR3 + LotConfigInside +
+        NeighborhoodCollgCr + NeighborhoodCrawfor + NeighborhoodEdwards +
+        NeighborhoodGilbert + NeighborhoodIDOTRR + NeighborhoodMeadowV +
+        NeighborhoodMitchel + NeighborhoodNAmes + NeighborhoodNridgHt +
+        NeighborhoodNWAmes + NeighborhoodOldTown + NeighborhoodSawyer +
+        NeighborhoodSawyerW + NeighborhoodStoneBr + NeighborhoodTimber +
+        Condition1Norm + Condition1PosN + Condition1RRAe + Condition1RRAn +
+        Condition1RRNn + Condition2Feedr + Condition2Norm + Condition2PosA +
+        Condition2PosN + Condition2RRNn + BldgType2fmCon + HouseStyle1.5Unf +
+        HouseStyle2.5Unf + RoofStyleGambrel + RoofStyleShed + RoofMatlCompShg +
+        RoofMatlMembran + RoofMatlMetal + RoofMatlRoll + `RoofMatlTar&Grv` +
+        RoofMatlWdShake + RoofMatlWdShngl + Exterior1stBrkComm +
+        Exterior1stBrkFace + Exterior1stHdBoard + Exterior1stPlywood +
+        `Exterior1stWd Sdng` + `Exterior2ndBrk Cmn` + Exterior2ndCmentBd +
+        Exterior2ndOther + `Exterior2ndWd Sdng` + FoundationPConc +
+        FoundationStone + FoundationWood + HeatingGasA + HeatingGasW +
+        HeatingWall + ElectricalSBrkr + FenceMnPrv + FenceNone +
+        MiscFeatureOthr + MiscFeatureTenC + MoSold5 + MoSold10 +
+        SaleTypeConLD + SaleTypeCWD + SaleTypeNew + SaleTypeOth +
+        SaleConditionAdjLand + SaleConditionAlloca + SaleConditionNormal,
+        data =  train)
+    }
+    backwardModel
 }
 
 getLassoModel <- function(data){
