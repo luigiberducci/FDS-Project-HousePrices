@@ -148,6 +148,17 @@ handleOutside <- function(data){
     data
 }
 
+# no custom features here; testing the most simple feature engineering model
+handleOutside2 <- function(data){
+    data <- checkConsistencyPool(data)
+    data$PavedDrive <- encodeAsOrdinal(data$PavedDrive, PavedDrive, "N")
+    
+    data$Fence <- encodeAsFactor(data$Fence, "None")
+    
+    data$PoolQC <- encodeAsOrdinal(data$PoolQC, Qualities, "None")
+    data$PoolArea[is.na(data$PoolArea)] <- 0
+    data
+}
 
 checkConsistencyGarage <- function(data){
     data$GarageArea[data$GarageArea==0] <- NA
@@ -242,6 +253,34 @@ handleSaleBsmtAndYears <- function(data){
     data
 }
 
+# no custom features here; testing the most simple feature engineering model
+handleSaleBsmtAndYears2 <- function(data){
+    data$MoSold         <- encodeAsFactor(data$MoSold)
+    data$SaleType       <- encodeAsFactor(data$SaleType)
+    data$SaleCondition  <- encodeAsFactor(data$SaleCondition)
+    data$RoofStyle      <- encodeAsFactor(data$RoofStyle)
+    data$RoofMatl       <- encodeAsFactor(data$RoofMatl)
+    data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
+    data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
+    data$Foundation     <- encodeAsFactor(data$Foundation)
+    
+    data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
+    data$ExterCond      <- encodeAsOrdinal(data$ExterCond,Qualities)
+    data$MasVnrType     <- encodeAsOrdinal(data$MasVnrType,Masonry, "None")
+    data$BsmtQual       <- encodeAsOrdinal(data$BsmtQual,Qualities, "None")
+    data$BsmtCond       <- encodeAsOrdinal(data$BsmtCond,Qualities, "None")
+    data$BsmtExposure   <- encodeAsOrdinal(data$BsmtExposure,Exposure, "None")
+    data$BsmtFinType1   <- encodeAsOrdinal(data$BsmtFinType1,FinType, "None")
+    data$BsmtFinType2   <- encodeAsOrdinal(data$BsmtFinType2,FinType, "None")
+    data$BsmtFinSF1[is.na(data$BsmtFinSF1)] <-0
+    data$BsmtFinSF2[is.na(data$BsmtFinSF2)] <-0
+    data$BsmtUnfSF[is.na(data$BsmtUnfSF)] <-0
+    data$TotalBsmtSF[is.na(data$TotalBsmtSF)] <-0
+    data$MasVnrArea[is.na(data$MasVnrArea)] <-0
+    
+    data
+}
+
 # IMPORTANT TODO: Correct indentation from this point to the end of file. (Blame of Emanuele)
 
 handleLocations <- function(data){
@@ -271,6 +310,19 @@ handleLocations <- function(data){
     data
 }
 
+# no custom features here; testing the most simple feature engineering model
+handleLocations2 <- function(data){
+    data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
+    data$MSZoning       <- encodeAsFactor(data$MSZoning)
+    data$Street         <- encodeAsOrdinal(data$Street, AccessType)
+    data$Alley          <- encodeAsFactor(data$Alley, "None")
+    data$Neighborhood   <- encodeAsFactor(data$Neighborhood)
+    data$Condition1     <- encodeAsFactor(data$Condition1)
+    data$Condition2     <- encodeAsFactor(data$Condition2)
+    
+    data
+}
+
 handleLot <- function(data){
   data                <- getValidFrontages(data)
   data$LotShape       <- encodeAsOrdinal(data$LotShape, LotShape)
@@ -296,6 +348,21 @@ handleMisc <- function(data){
     data$DummyElectrical[data$Electrical=="SBrkr"] <- 1
     data$Electrical     <- encodeAsFactor(data$Electrical)
 
+    data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
+    data                <- getValidMiscFeaturesAndVal(data)
+    data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")
+    data
+}
+
+# no custom features here; testing the most simple feature engineering model
+handleMisc2 <- function(data){
+    data$Utilities      <- encodeAsOrdinal(data$Utilities, Utilities, "None")
+    data$BldgType       <- encodeAsFactor(data$BldgType)
+    data$HouseStyle     <- encodeAsFactor(data$HouseStyle)
+    data$Heating        <- encodeAsFactor(data$Heating)
+    data$HeatingQC      <- encodeAsOrdinal(data$HeatingQC, Qualities, 'None')
+    data$CentralAir     <- encodeAsOrdinal(data$CentralAir, CentralAir, 'N')
+    data$Electrical     <- encodeAsFactor(data$Electrical)
     data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
     data                <- getValidMiscFeaturesAndVal(data)
     data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")

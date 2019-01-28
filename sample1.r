@@ -50,4 +50,39 @@ bootstrap <- function(data){
     data
 }
 
+bootstrap2 <- function(data){
+    data <- handleLocations2(data)
+    data <- handleLot(data)
+    data <- handleMisc2(data)
+    
+    data <- handleSaleBsmtAndYears2(data)
+    
+    data <- handleGarage(data)
+    data <- handleRooms(data)
+    data <- handleOutside2(data)
+    
+    #removing multicollinear features
+    data <- data[!colnames(data) %in% c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")]
+    
+    #log prices
+    data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
+    
+    #checking skewness
+    factors <- getFactorFields(data)
+    numericFeats <- names(which(sapply(data, is.integer)))
+    numericData <- data[numericFeats]
+    skewness <- showSkewness(numericData)
+    skewFeats <- skewness$Feature[abs(skewness$Skewness) > 0.65]
+    skewFeats <- setdiff(skewFeats, factors)
+    transformation <- preProcess(data[skewFeats], method = "BoxCox")
+    processed <- predict(transformation, data[skewFeats])
+    data[skewFeats] <- processed
+    
+    #adding dummy variables
+    data <- appendDummyVariables(data)
+    data <- removeFactors(data)
+    
+    data
+}
+
 # here instructions to automatically perform bootstrapping, test on real test set and saving predictions to file
