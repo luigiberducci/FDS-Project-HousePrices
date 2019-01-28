@@ -2,36 +2,52 @@
 # Date:     January 2019
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
-iterateCrossValidationNTimes <- function(model, data, nTimes, neuralModel = F){
-    finalRes <- data.frame()
-    for(i in 1:nTimes){
-        currentRes <- crossValidation(model, data, neuralModel)
-        finalRes <- rbind(finalRes, currentRes)
-    }
-    finalRes
-}
-
-crossValidation <- function(model, data, neuralModel = F){
-    # Work only on train data
-    allTrain <- getTrainData(data, scaled = neuralModel) 
-    
-    # Split in train/test data
-    trainSamples <- allTrain$SalePrice %>% createDataPartition(p=0.8, list=FALSE)
-    trainData <- allTrain[trainSamples, ]
-    testData  <- allTrain[-trainSamples, ]
-    
-    # Save the groundtruth to future comparison
-    groundTruth <- testData$SalePrice
-    testData$SalePrice <- NA
-
-    pred  <- NULL
+iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, neuralModel = F){
+    #compute max and min SalePrice to scale back NN's predictions
+    maxPrice <- 0
+    minPrice <- 0
     if(neuralModel == T){
         maxPrice = max(data$SalePrice, na.rm = T)
         minPrice = min(data$SalePrice, na.rm = T)
-        pred <- predictNeuralSalePrices(model, testData, checkSkew = F, isDataScaled = T, maxPrice = maxPrice, minPrice = minPrice)
     }
+    
+    # Work only on train data
+    allTrain <- getTrainData(data, scaled = neuralModel)
+    
+    #create partitions for cross validation (avoiding the same splitting due to set.seed)
+    sets <- list()
+    for(i in 1:nTimes){
+        # Split in train/test data
+        trainSamples <- allTrain$SalePrice %>% createDataPartition(p=0.8, list=FALSE)
+        trainData <- allTrain[trainSamples, ]
+        testData  <- allTrain[-trainSamples, ]
+        
+        sets[[i]] <- list(trainData = trainData, testData = testData)
+    }
+    
+    finalRes <- data.frame()
+    
+    #for each partion, train a new model on the selected portion of training data and test against the other portion
+    for(i in 1:length(sets)){
+        set <- sets[[i]]
+        model <- modelConstructor(set$trainData)
+        currentRes <- crossValidation(model, set$testData, neuralModel = neuralModel, maxPrice = maxPrice, minPrice = minPrice)
+        finalRes <- rbind(finalRes, currentRes)
+    }
+    
+    finalRes
+}
+
+crossValidation <- function(model, data, neuralModel = F, maxPrice = 0, minPrice = 0){
+    # Save the groundtruth to future comparison
+    groundTruth <- data$SalePrice
+    data$SalePrice <- NA
+
+    pred  <- NULL
+    if(neuralModel == T)
+        pred <- predictNeuralSalePrices(model, data, checkSkew = F, isDataScaled = T, maxPrice = maxPrice, minPrice = minPrice)
     else
-        pred <- predictSalePrices(model, testData, checkSkew = F)
+        pred <- predictSalePrices(model, data, checkSkew = F)
     
     res   <- data.frame( R2 = R2(pred, groundTruth),
                          RMSE = RMSE(pred, groundTruth),
