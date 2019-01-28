@@ -205,6 +205,7 @@ currentRowIsInconsistentGivenSetOfFeatures <- function(data, features, i){
 handleSaleBsmtAndYears <- function(data){
     data$MoSold         <- encodeAsFactor(data$MoSold)
 
+<<<<<<< Updated upstream
     data$DummySaleType <- 0
     data$DummySaleType[data$SaleType == "New"] <- 1
     data$SaleType       <- encodeAsFactor(data$SaleType)
@@ -212,11 +213,20 @@ handleSaleBsmtAndYears <- function(data){
     # Remove it because is multicollinear with NewSaleType
     # data$DummySaleCondition <- 0
     # data$DummySaleCondition[data$SaleCondition=="Partial"] <- 1
+=======
+    data$NewSaleType <- 0
+    data$NewSaleType[data$SaleType == "New"] <- 1
+    data$SaleType       <- encodeAsFactor(data$SaleType)
+
+    data$NewSaleCondition <- 0
+    data$NewSaleCondition[data$SaleCondition=="Partial"] <- 1
+>>>>>>> Stashed changes
     data$SaleCondition  <- encodeAsFactor(data$SaleCondition)
 
     data$RoofStyle      <- encodeAsFactor(data$RoofStyle)
     data$RoofMatl       <- encodeAsFactor(data$RoofMatl)
 
+<<<<<<< Updated upstream
     data$DummyExterior <- 0
     data$DummyExterior[data$Exterior1st == "VinylSd" | data$Exterior2nd == "VinylSd"] <- 1
     data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
@@ -224,6 +234,15 @@ handleSaleBsmtAndYears <- function(data){
 
     data$DummyFoundation <- 0
     data$DummyFoundation[data$Foundation == "PConc"] <- 1
+=======
+    data$NewExterior <- 0
+    data$NewExterior[data$Exterior1st == "VinylSd" | data$Exterior2nd == "VinylSd"] <- 1
+    data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
+    data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
+
+    data$NewFoundation <- 0
+    data$NewFoundation[data$Foundation == "PConc"] <- 1
+>>>>>>> Stashed changes
     data$Foundation     <- encodeAsFactor(data$Foundation)
     
     data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
@@ -284,12 +303,21 @@ handleSaleBsmtAndYears2 <- function(data){
 # IMPORTANT TODO: Correct indentation from this point to the end of file. (Blame of Emanuele)
 
 handleLocations <- function(data){
+<<<<<<< Updated upstream
     data$DummyMSSubClass[!(data$MSSubClass %in% c(20, 60,120))] <- 0
     data$DummyMSSubClass[(data$MSSubClass %in% c(20, 60,120))]  <- 1
     data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
 
     data$DummyMSZoning[!(data$MSZoning %in% c('RL', 'FV'))] <- 0
     data$DummyMSZoning[data$MSZoning %in% c('RL', 'FV')]    <- 1
+=======
+    data$NewMSSubClass[!(data$MSSubClass %in% c(20, 60,120))] <- 0
+    data$NewMSSubClass[(data$MSSubClass %in% c(20, 60,120))]  <- 1
+    data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
+
+    data$NewMSZoning[!(data$MSZoning %in% c('RL', 'FV'))] <- 0
+    data$NewMSZoning[data$MSZoning %in% c('RL', 'FV')]    <- 1
+>>>>>>> Stashed changes
     data$MSZoning       <- encodeAsFactor(data$MSZoning)
 
     data$Street         <- encodeAsOrdinal(data$Street, AccessType)
@@ -299,15 +327,23 @@ handleLocations <- function(data){
     highAvg <- c("Blmngtn","ClearCr","CollgCr","Crawfor","Gilbert","NWAmes","SawyerW")
     poor <- c("BrDale","BrkSide","IDOTRR","MeadowV","OldTown")
 
+<<<<<<< Updated upstream
     data$DummyNeighborhood <- 1
     data$DummyNeighborhood[data$Neighborhood %in% poor] <- 0
     data$DummyNeighborhood[data$Neighborhood %in% highAvg]  <- 2
     data$DummyNeighborhood[data$Neighborhood %in% vip]  <- 3
+=======
+    data$NewNeighborhood <- 1
+    data$NewNeighborhood[data$Neighborhood %in% poor] <- 0
+    data$NewNeighborhood[data$Neighborhood %in% highAvg]  <- 2
+    data$NewNeighborhood[data$Neighborhood %in% vip]  <- 3
+>>>>>>> Stashed changes
     data$Neighborhood   <- encodeAsFactor(data$Neighborhood)
 
     data$Condition1     <- encodeAsFactor(data$Condition1)
     data$Condition2     <- encodeAsFactor(data$Condition2)
     data
+<<<<<<< Updated upstream
 }
 
 # no custom features here; testing the most simple feature engineering model
@@ -321,6 +357,8 @@ handleLocations2 <- function(data){
     data$Condition2     <- encodeAsFactor(data$Condition2)
     
     data
+=======
+>>>>>>> Stashed changes
 }
 
 handleLot <- function(data){
@@ -336,22 +374,33 @@ handleMisc <- function(data){
     data$Utilities      <- encodeAsOrdinal(data$Utilities, Utilities, "None")
     data$BldgType       <- encodeAsFactor(data$BldgType)
 
+<<<<<<< Updated upstream
     data$DummyHouseStyle <- 0
     data$DummyHouseStyle[data$HouseStyle == "2Story"] <- 1
+=======
+    data$NewHouseStyle <- 0
+    data$NewHouseStyle[data$HouseStyle == "2Story"] <- 1
+>>>>>>> Stashed changes
     data$HouseStyle     <- encodeAsFactor(data$HouseStyle)
 
     data$Heating        <- encodeAsFactor(data$Heating)
     data$HeatingQC      <- encodeAsOrdinal(data$HeatingQC, Qualities, 'None')
     data$CentralAir     <- encodeAsOrdinal(data$CentralAir, CentralAir, 'N')
 
+<<<<<<< Updated upstream
     data$DummyElectrical <- 0
     data$DummyElectrical[data$Electrical=="SBrkr"] <- 1
+=======
+    data$NewElectrical <- 0
+    data$NewElectrical[data$Electrical=="SBrkr"] <- 1
+>>>>>>> Stashed changes
     data$Electrical     <- encodeAsFactor(data$Electrical)
 
     data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
     data                <- getValidMiscFeaturesAndVal(data)
     data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")
     data
+<<<<<<< Updated upstream
 }
 
 # no custom features here; testing the most simple feature engineering model
@@ -367,6 +416,8 @@ handleMisc2 <- function(data){
     data                <- getValidMiscFeaturesAndVal(data)
     data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")
     data
+=======
+>>>>>>> Stashed changes
 }
 
 addFeatureBathrooms <- function(data){
@@ -383,6 +434,10 @@ addFeatureRecentGarage <- function(data) {
 
     data$RecentGarage[data$GarageYrBlt < 2000] <- 0
     data$RecentGarage[data$GarageYrBlt >= 2000] <- 1
+<<<<<<< Updated upstream
+=======
+    data$RecentGarage <- as.factor(data$RecentGarage)
+>>>>>>> Stashed changes
   
     data$SalePrice <- prices
     data
@@ -463,7 +518,11 @@ featureEngineering <- function(data){
   
   data <- correctSkewness(data)
   data <- getOnlyRelevantFeatures(data)
+<<<<<<< Updated upstream
   # data <- appendDummyVariables(data)
+=======
+  data <- appendDummyVariables(data)
+>>>>>>> Stashed changes
   data
 }
 
@@ -474,10 +533,16 @@ getOnlyRelevantFeatures <- function(data) {
   notRelevantEma <- c("MSSubClass", "MSZoning", "Alley", "LandContour", "LotConfig", "Utilities", "Street", "Condition2", "MiscVal", "MiscFeature", "Neighborhood", "Condition1", "BldgType", "HouseStyle")
   # notRelevantEma <- c("Utilities", "Street", "Condition2", "MiscVal", "MiscFeature") 
   # notRelevantAng <- c("X1stFlrSF","X2ndFlrSF","LowQualFinSF", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd")
+<<<<<<< Updated upstream
   notRelevantAng <- c("RoofStyle", "RoofMatl", "Exterior1st", "Exterior2nd", "Foundation", "X1stFlrSF","X2ndFlrSF","LowQualFinSF", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd", "Heating", "Electrical", "MoSold", "SaleType", "SaleCondition", "YrSold")
   notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea", "Fence", "WoodDeckSF", "OpenPorchSF", "EnclosedPorchSF", "X3SsnPorch", "ScreenPorch")
   multicollinear <- c("PoolArea", "GarageCond", "Fireplaces")
   notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui, multicollinear)
+=======
+  notRelevantAng <- c("RoofStyle", "RoofMatl", "Exterior1st", "Exterior2nd", "Foundation", "X1stFlrSF","X2ndFlrSF","LowQualFinSF", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "GrLivArea", "TotalBsmtSF", "YearBuilt", "YearRemodAdd", "Heating", "Electrical", "MoSold", "SaleType", "SaleCondition")
+  notRelevantLui <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", "GarageYrBlt", "GarageCars", "GarageArea", "Fence")
+  notRelevant <- c(notRelevantAng, notRelevantEma, notRelevantLui)
+>>>>>>> Stashed changes
   toRemove <- names(numerical) %in% notRelevant
   relevant <- numerical[!toRemove]
   relevant
