@@ -52,13 +52,17 @@ bootstrap <- function(data){
 
 bootstrap2 <- function(data){
     #removing outliers
-    data <- data %>%
+    trainData <- getTrainData(data)
+    testData <- getTestData(data)
+
+    trainData <- trainData %>%
         filter(SalePrice < 600000) %>%                              #4 houses
         filter(LotFrontage <= 200) %>%                              #2 houses
         filter(LotArea <= 100000) %>%                               #4 houses
         filter(Fireplaces < 3) %>%                                  #5 houses
         filter(!(MiscFeature %in% c("TenC", "Othr", "Gar2"))) %>%   #4 houses
         filter(MiscVal < 5000)                                      #2 houses
+    data <- rbind(trainData, testData)
     
     data <- handleLocations2(data)
     data <- handleLot(data)
@@ -69,9 +73,22 @@ bootstrap2 <- function(data){
     data <- handleGarage(data)
     data <- handleRooms(data)
     data <- handleOutside2(data)
-    
+
+    data <- addFeatureBathrooms(data)
+    data <- addFeatureCarsXArea(data)
+    data <- addFeatureRecentGarage(data)
+    data <- addFeatureRecentType(data)
+
+    # from factor to ordinal 0 (poor), 1 (low), 2 (medium), 3 (rich)
+    # Note: seems that neigh conversion doesn't improve the score
+    # data <- convertNeighboroodToClasses(data)
+
     #removing multicollinear features
-    data <- data[!colnames(data) %in% c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")]
+    base <- c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")
+    bathrooms <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath")
+    garage <- c("GarageCars", "GarageType", "GarageYrBlt")
+    multicollinear <- c(base, bathrooms, garage)
+    data <- data[!colnames(data) %in% multicollinear]
     
     #log prices
     data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])

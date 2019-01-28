@@ -323,6 +323,20 @@ handleLocations2 <- function(data){
     data
 }
 
+convertNeighboroodToClasses<- function(data){
+    vip <- c("NoRidge","NridgHt","Somerst","StoneBr","Timber","Veenker")
+    highAvg <- c("Blmngtn","ClearCr","CollgCr","Crawfor","Gilbert","NWAmes","SawyerW")
+    poor <- c("BrDale","BrkSide","IDOTRR","MeadowV","OldTown")
+
+    data$neighClass <- 1
+    data$neighClass[data$Neighborhood %in% poor]    <- 0
+    data$neighClass[data$Neighborhood %in% highAvg] <- 2
+    data$neighClass[data$Neighborhood %in% vip]     <- 3
+    data$Neighborhood <- data$neighClass
+    data$neighClass <- NULL
+    data
+}
+
 handleLot <- function(data){
   data                <- getValidFrontages(data)
   data$LotShape       <- encodeAsOrdinal(data$LotShape, LotShape)
