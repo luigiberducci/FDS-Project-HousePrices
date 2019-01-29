@@ -110,7 +110,12 @@ bootstrap2 <- function(data){
     data <- appendDummyVariables(data)
     data <- removeFactors(data)
     
+    #removing features with few occurrences in the training set
+    lowOccurrenceCols <- which(colSums(data[1:nrow(data[!is.na(data$SalePrice),]),]) < 10)
+    data <- data[, -lowOccurrenceCols]
+    
     data
 }
 
 # here instructions to automatically perform bootstrapping, test on real test set and saving predictions to file
+
