@@ -99,6 +99,43 @@ removeMulticollinearFeatures <- function(data){
     data
 }
 
+#iteratively drop least important features, minimizing the given model's average RMSE
+importanceSelection <- function(data, modelConstructor, maxRounds = 10){
+    round <- 0
+    
+    model <- modelConstructor(data)
+    rmse <- mean(model$results$RMSE)
+    
+    while(round < maxRounds){
+        print(paste("RMSE (", round, "): ", rmse))
+        
+        imp <- varImp(model)$importance
+        features <- rownames(imp)
+        zeroImpPositions <- which(imp$Overall == 0)
+        zeroImpFeatures <- features[zeroImpPositions]
+        
+        newData <- data[!(names(data) %in% zeroImpFeatures)]
+        newModel <- modelConstructor(newData)
+        newRmse <- mean(newModel$results$RMSE)
+        
+        if(newRmse < rmse){
+            print(paste("RMSE improved by ", rmse - newRmse))
+            data <- newData
+            model <- newModel
+            rmse <- newRmse
+        }
+        else{
+            print(paste("RMSE did not improve. Stopping with RMSE: ", rmse))
+            break
+        }
+        print("")
+        
+        round <- round + 1
+    }
+    
+    data
+}
+
 applyBoruta <- function(data, features = NULL, threshold = 0){
     set.seed(12345)
     if(!is.null(features)){
