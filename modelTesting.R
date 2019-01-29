@@ -176,7 +176,7 @@ getLassoModel <- function(data){
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    grid <- expand.grid(alpha = 1, lambda = 0.002)
+    grid <- expand.grid(alpha = 1, lambda = 0.0045)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
     
     model
@@ -233,7 +233,7 @@ getGradientBoostingModel <- function(data){
     
     control <- trainControl(method="cv", number = 10)
     grid <- expand.grid(nrounds = 300, #c(100,200,300),
-                        max_depth = 6, #c(3:7),
+                        max_depth = 4, #c(3:7),
                         eta = 0.05, #c(0.05, 1),
                         gamma = c(0.01),
                         colsample_bytree = c(0.75),

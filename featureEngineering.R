@@ -50,12 +50,18 @@ getMode <- function(values){
     uniques[maxFreqID]
 }
 
+#returns the mean of a collection of values
+getMean <- function(values){
+    m <- mean(values, na.rm = T)
+    m
+}
+
 #returns values as factors, filling NAs with the mode or with the specified argument
 encodeAsFactor <- function(values, replaceNA = "NA"){
     if(!is.factor(values))
     {
-      values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
-      values <- as.factor(values)
+        values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
+        values <- as.factor(values)
     }
     values
 }
@@ -64,8 +70,8 @@ encodeAsFactor <- function(values, replaceNA = "NA"){
 encodeAsOrdinal <- function(values, dictionary, replaceNA = "NA"){
     if(!is.integer(values))
     {
-      values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
-      values <- as.integer(dictionary[values])
+        values[is.na(values)] <- ifelse(replaceNA == "NA", getMode(values), replaceNA)
+        values <- as.integer(dictionary[values])
     }
     values
 }
@@ -255,14 +261,14 @@ handleSaleBsmtAndYears <- function(data){
 
 # no custom features here; testing the most simple feature engineering model
 handleSaleBsmtAndYears2 <- function(data){
-    data$MoSold         <- encodeAsFactor(data$MoSold)
-    data$SaleType       <- encodeAsFactor(data$SaleType)
-    data$SaleCondition  <- encodeAsFactor(data$SaleCondition)
-    data$RoofStyle      <- encodeAsFactor(data$RoofStyle)
-    data$RoofMatl       <- encodeAsFactor(data$RoofMatl)
-    data$Exterior1st    <- encodeAsFactor(data$Exterior1st)
-    data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd)
-    data$Foundation     <- encodeAsFactor(data$Foundation)
+    data$MoSold         <- encodeAsFactor(data$MoSold, "None")
+    data$SaleType       <- encodeAsFactor(data$SaleType, "None")
+    data$SaleCondition  <- encodeAsFactor(data$SaleCondition, "None")
+    data$RoofStyle      <- encodeAsFactor(data$RoofStyle, "None")
+    data$RoofMatl       <- encodeAsFactor(data$RoofMatl, "None")
+    data$Exterior1st    <- encodeAsFactor(data$Exterior1st, "None")
+    data$Exterior2nd    <- encodeAsFactor(data$Exterior2nd, "None")
+    data$Foundation     <- encodeAsFactor(data$Foundation, "None")
     
     data$ExterQual      <- encodeAsOrdinal(data$ExterQual,Qualities)
     data$ExterCond      <- encodeAsOrdinal(data$ExterCond,Qualities)
@@ -312,28 +318,14 @@ handleLocations <- function(data){
 
 # no custom features here; testing the most simple feature engineering model
 handleLocations2 <- function(data){
-    data$MSSubClass     <- encodeAsFactor(data$MSSubClass)
-    data$MSZoning       <- encodeAsFactor(data$MSZoning)
+    data$MSSubClass     <- encodeAsFactor(data$MSSubClass, "None")
+    data$MSZoning       <- encodeAsFactor(data$MSZoning, "None")
     data$Street         <- encodeAsOrdinal(data$Street, AccessType)
     data$Alley          <- encodeAsFactor(data$Alley, "None")
-    data$Neighborhood   <- encodeAsFactor(data$Neighborhood)
-    data$Condition1     <- encodeAsFactor(data$Condition1)
-    data$Condition2     <- encodeAsFactor(data$Condition2)
+    data$Neighborhood   <- encodeAsFactor(data$Neighborhood, "None")
+    data$Condition1     <- encodeAsFactor(data$Condition1, "None")
+    data$Condition2     <- encodeAsFactor(data$Condition2, "None")
     
-    data
-}
-
-convertNeighboroodToClasses<- function(data){
-    vip <- c("NoRidge","NridgHt","Somerst","StoneBr","Timber","Veenker")
-    highAvg <- c("Blmngtn","ClearCr","CollgCr","Crawfor","Gilbert","NWAmes","SawyerW")
-    poor <- c("BrDale","BrkSide","IDOTRR","MeadowV","OldTown")
-
-    data$neighClass <- 1
-    data$neighClass[data$Neighborhood %in% poor]    <- 0
-    data$neighClass[data$Neighborhood %in% highAvg] <- 2
-    data$neighClass[data$Neighborhood %in% vip]     <- 3
-    data$Neighborhood <- data$neighClass
-    data$neighClass <- NULL
     data
 }
 
@@ -344,6 +336,15 @@ handleLot <- function(data){
   data$LotConfig      <- encodeAsFactor(data$LotConfig)
   data$LandSlope      <- encodeAsOrdinal(data$LandSlope, LandSlope)
   data
+}
+
+handleLot2 <- function(data){
+    data                <- getValidFrontages(data)
+    data$LotShape       <- encodeAsOrdinal(data$LotShape, LotShape)
+    data$LandContour    <- encodeAsFactor(data$LandContour, "None")
+    data$LotConfig      <- encodeAsFactor(data$LotConfig, "None")
+    data$LandSlope      <- encodeAsOrdinal(data$LandSlope, LandSlope)
+    data
 }
 
 handleMisc <- function(data){
@@ -371,12 +372,12 @@ handleMisc <- function(data){
 # no custom features here; testing the most simple feature engineering model
 handleMisc2 <- function(data){
     data$Utilities      <- encodeAsOrdinal(data$Utilities, Utilities, "None")
-    data$BldgType       <- encodeAsFactor(data$BldgType)
-    data$HouseStyle     <- encodeAsFactor(data$HouseStyle)
-    data$Heating        <- encodeAsFactor(data$Heating)
+    data$BldgType       <- encodeAsFactor(data$BldgType, "None")
+    data$HouseStyle     <- encodeAsFactor(data$HouseStyle, "None")
+    data$Heating        <- encodeAsFactor(data$Heating, "None")
     data$HeatingQC      <- encodeAsOrdinal(data$HeatingQC, Qualities, 'None')
     data$CentralAir     <- encodeAsOrdinal(data$CentralAir, CentralAir, 'N')
-    data$Electrical     <- encodeAsFactor(data$Electrical)
+    data$Electrical     <- encodeAsFactor(data$Electrical, "None")
     data$FireplaceQu    <- encodeAsOrdinal(data$FireplaceQu, Qualities, "None")
     data                <- getValidMiscFeaturesAndVal(data)
     data$MiscFeature    <- encodeAsFactor(data$MiscFeature, "None")

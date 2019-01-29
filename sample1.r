@@ -65,13 +65,13 @@ bootstrap2 <- function(data){
     data <- rbind(trainData, testData)
     
     data <- handleLocations2(data)
-    data <- handleLot(data)
+    data <- handleLot2(data)
     data <- handleMisc2(data)
     
     data <- handleSaleBsmtAndYears2(data)
     
     data <- handleGarage(data)
-    data <- handleRooms(data)
+    data <- handleRooms2(data)
     data <- handleOutside2(data)
 
     data <- addFeatureBathrooms(data)
