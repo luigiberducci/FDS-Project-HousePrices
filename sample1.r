@@ -51,68 +51,16 @@ bootstrap <- function(data){
 }
 
 bootstrap2 <- function(data){
-    #removing outliers
-    trainData <- getTrainData(data)
-    testData <- getTestData(data)
+    data <- removeOutliers(data) 
+    data <- encodeFeatures(data)
+    data <- addNewFeatures(data)
+    data <- removeMulticollinearFeatures(data)
+    
+    data <- correctSkewSalePrice(data)
+    data <- correctSkewPredictors(data) 
 
-    trainData <- trainData %>%
-        filter(SalePrice < 600000) %>%                              #4 houses
-        filter(LotFrontage <= 200) %>%                              #2 houses
-        filter(LotArea <= 100000) %>%                               #4 houses
-        filter(Fireplaces < 3) %>%                                  #5 houses
-        filter(!(MiscFeature %in% c("TenC", "Othr", "Gar2"))) %>%   #4 houses
-        filter(MiscVal < 5000)                                      #2 houses
-    data <- rbind(trainData, testData)
-    
-    data <- handleLocations2(data)
-    data <- handleLot2(data)
-    data <- handleMisc2(data)
-    
-    data <- handleSaleBsmtAndYears2(data)
-    
-    data <- handleGarage(data)
-    data <- handleRooms2(data)
-    data <- handleOutside2(data)
-
-    data <- addFeatureBathrooms(data)
-    data <- addFeatureCarsXArea(data)
-    data <- addFeatureRecentGarage(data)
-    data <- addFeatureRecentType(data)
-
-    # from factor to ordinal 0 (poor), 1 (low), 2 (medium), 3 (rich)
-    # Note: seems that neigh conversion doesn't improve the score
-    # data <- convertNeighboroodToClasses(data)
-
-    #removing multicollinear features
-    base <- c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")
-    bathrooms <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath")
-    garage <- c("GarageCars", "GarageType", "GarageYrBlt")
-    multicollinear <- c(base, bathrooms, garage)
-    data <- data[!colnames(data) %in% multicollinear]
-    
-    #log prices
-    data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
-    SKEWCORRECTION <<- TRUE
-
-    #checking skewness and applying BoxCox transformation to skewed features
-    factors <- getFactorFields(data)
-    numericFeats <- names(which(sapply(data, is.numeric)))
-    numericFeats <- numericFeats[numericFeats != "SalePrice"]
-    numericData <- data[numericFeats]
-    skewness <- showSkewness(numericData) %>% filter(!is.nan(Skewness))
-    skewFeats <- skewness$Feature[abs(skewness$Skewness) > 0.65]
-    skewFeats <- setdiff(skewFeats, factors)
-    transformation <- preProcess(data[skewFeats], method = "BoxCox")
-    processed <- predict(transformation, data[skewFeats])
-    data[skewFeats] <- processed
-    
-    #adding dummy variables
-    data <- appendDummyVariables(data)
-    data <- removeFactors(data)
-    
-    #removing features with few occurrences in the training set
-    lowOccurrenceCols <- which(colSums(data[1:nrow(data[!is.na(data$SalePrice),]),]) < 10)
-    data <- data[, -lowOccurrenceCols]
+    data <- convertDummyVariables(data)
+    data <- removeLessFrequentFeatures(data) 
     
     data
 }

@@ -17,11 +17,88 @@ Functional  <- c(   'Typ'=7,   'Min1'=6,     'Min2'=5,      'Mod'=4, 'Maj1'=3, '
 GarageFinish <- c(  'Fin'=3,    'RFn'=2,      'Unf'=1,     'Miss'=0)
 
 # FLAG TO CONTROL SKEW CORRECTION
-SKEWCORRECTION <<- FALSE
+SKEWCORRECTION    <<- FALSE
+NEWFEATBATH       <<- FALSE
+NEWFEATCARSXAREA  <<- FALSE
+NEWFEATRECENTG    <<- FALSE
+NEWFEATRECENTTYPE <<- FALSE
 DUMMIESVAR <<- c()
 
 # Helper Functions
 #returns the most important features, estimated via the Boruta technique; can be set up to only work on selected features (default: all) and to meet a certain importance threshold (default: 0)
+removeOutliers <- function(data){
+    trainData <- getTrainData(data)
+    testData <- getTestData(data)
+ 
+    trainData <- trainData %>%
+        filter(SalePrice < 600000) %>%                              #4      houses
+        filter(LotFrontage <= 200) %>%                              #2      houses
+        filter(LotArea <= 100000) %>%                               #4      houses
+        filter(Fireplaces < 3) %>%                                  #5      houses
+        filter(!(MiscFeature %in% c("TenC", "Othr", "Gar2"))) %>%   #4      houses
+        filter(MiscVal < 5000)                                      #2      houses
+    data <- rbind(trainData, testData)
+    data
+}
+
+removeLessFrequentFeatures <- function(data){
+    lowOccurrenceCols <- which(colSums(data[1:nrow(data[!is.na(data$SalePrice),]),]) < 10)
+    data <- data[, -lowOccurrenceCols]
+    data
+}
+
+encodeFeatures <- function(data){
+    data <- handleLocations2(data)
+    data <- handleLot2(data)
+    data <- handleMisc2(data)
+     
+    data <- handleSaleBsmtAndYears2(data)
+     
+    data <- handleGarage(data)
+    data <- handleRooms(data)
+    data <- handleOutside2(data)
+    data
+}
+
+addNewFeatures <- function(data, totBathRms=T, carsXarea=T, recentGarage=T, recentType=T){
+    if(totBathRms){
+        data <- addFeatureBathrooms(data)
+        NEWFEATBATH <<- TRUE
+    }
+    if(carsXarea){
+        data <- addFeatureCarsXArea(data)
+        NEWFEATCARSXAREA <<- TRUE
+    }
+    if(recentGarage){
+        data <- addFeatureRecentGarage(data)
+        NEWFEATRECENTG <<- TRUE
+    }
+    if(recentType){
+        data <- addFeatureRecentType(data)
+        NEWFEATRECENTTYPE <<- TRUE
+    }
+    # from factor to ordinal 0 (poor), 1 (low), 2 (medium), 3 (rich)
+    # Note: seems that neigh conversion doesn't improve the score
+    # data <- convertNeighboroodToClasses(data)
+    data
+}
+
+removeMulticollinearFeatures <- function(data){
+    base <- c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")
+    bathrooms <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath")
+    garage1 <- c("GarageCars") 
+    garage2 <- c("GarageType", "GarageYrBlt")
+    multicollinear <- base
+    if(NEWFEATBATH)
+        multicollinear <- c(multicollinear, bathrooms)
+    if(NEWFEATCARSXAREA) 
+        multicollinear <- c(multicollinear, garage1)
+    if(NEWFEATRECENTG & NEWFEATRECENTTYPE)
+        multicollinear <- c(multicollinear, garage2)
+    data <- data[!colnames(data) %in% multicollinear]
+    data
+}
+
 applyBoruta <- function(data, features = NULL, threshold = 0){
     set.seed(12345)
     if(!is.null(features)){
@@ -440,6 +517,12 @@ appendDummyVariables <- function(data){
   data
 }
 
+convertDummyVariables <- function(data){
+    data <- appendDummyVariables(data)
+    data <- removeFactors(data)
+    data
+}
+
 getFactorData <- function(data) {
   newData <- data[, getFactorFields(data)]
   newData
@@ -451,14 +534,24 @@ getFactorFields <- function(data) {
 }
 
 # Main functions
-correctSkewness <- function(data){
-  #Correct skewness on prices
+correctSkewSalePrice <- function(data){
   SKEWCORRECTION <<- TRUE
-  data$SalePrice <- log(data$SalePrice)
-  #Correct skewness on other fields
-  data$LotArea <- log(data$LotArea)
-  data$PoolArea <- log(data$PoolArea+1)
+  data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
   data
+}
+
+correctSkewPredictors <- function(data){
+    factors <- getFactorFields(data)
+    numericFeats <- names(which(sapply(data, is.numeric)))
+    numericFeats <- numericFeats[numericFeats != "SalePrice"]
+    numericData <- data[numericFeats]
+    skewness <- showSkewness(numericData) %>% filter(!is.nan(Skewness))
+    skewFeats <- skewness$Feature[abs(skewness$Skewness) > 0.65]
+    skewFeats <- setdiff(skewFeats, factors)
+    transformation <- preProcess(data[skewFeats], method = "BoxCox")
+    processed <- predict(transformation, data[skewFeats])
+    data[skewFeats] <- processed
+    data
 }
 
 featureEngineering <- function(data){
