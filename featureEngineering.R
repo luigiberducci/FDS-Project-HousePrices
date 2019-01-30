@@ -17,11 +17,15 @@ Functional  <- c(   'Typ'=7,   'Min1'=6,     'Min2'=5,      'Mod'=4, 'Maj1'=3, '
 GarageFinish <- c(  'Fin'=3,    'RFn'=2,      'Unf'=1,     'Miss'=0)
 
 # FLAG TO CONTROL SKEW CORRECTION
+<<<<<<< Updated upstream
 SKEWCORRECTION    <<- FALSE
 NEWFEATBATH       <<- FALSE
 NEWFEATCARSXAREA  <<- FALSE
 NEWFEATRECENTG    <<- FALSE
 NEWFEATRECENTTYPE <<- FALSE
+=======
+SKEWCORRECTION <<- FALSE
+>>>>>>> Stashed changes
 DUMMIESVAR <<- c()
 
 # Helper Functions

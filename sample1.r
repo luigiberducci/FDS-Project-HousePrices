@@ -149,7 +149,6 @@ bootstrap3 <- function(data){
     }
     
     data <- data[!(names(data) %in% toDrop)]
-    
     data
 }
 
