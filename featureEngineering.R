@@ -119,7 +119,6 @@ importanceSelection <- function(data, modelConstructor, maxRounds = 10){
         newRmse <- mean(newModel$results$RMSE)
         
         if(newRmse < rmse){
-            print(paste("RMSE improved by ", rmse - newRmse))
             data <- newData
             model <- newModel
             rmse <- newRmse
@@ -607,7 +606,9 @@ featureEngineering <- function(data){
   data <- addFeatureCarsXArea(data)
   data <- addFeatureRecentType(data)
   
-  data <- correctSkewness(data)
+  data <- correctSkewSalePrice(data)
+  data <- correctSkewPredictors(data) 
+  
   data <- getOnlyRelevantFeatures(data)
   # data <- appendDummyVariables(data)
   data
