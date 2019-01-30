@@ -3,6 +3,7 @@
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
 library(MASS)
+library(e1071)
 
 iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, neuralModel = F){
     #compute max and min SalePrice to scale back NN's predictions
@@ -167,6 +168,14 @@ getLinearModelWithBackwardSelection <- function(data, AREYOUSURE=F){
         data =  train)
     }
     backwardModel
+}
+
+getSVM <- function(data){
+    set.seed(12345)
+    trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+    train <- getTrainData(data)
+    
+    model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10)
 }
 
 getLassoModel <- function(data){
