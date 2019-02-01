@@ -401,7 +401,7 @@ testEnsembleModelOnPartitions <- function(ensembleList, partitions){
     finalRes
 }
 
-# splits data into k almost-equal sized parts and returns them as a list
+# splits data into k almost-equal sized parts and returns the indexes to perform data splitting as a list
 getKFolds <- function(data, k){
     n <- nrow(data)
     chunkSize <- as.integer(n/k) + 1
@@ -413,7 +413,7 @@ getKFolds <- function(data, k){
         if(end > n)
             end <- n
         
-        split[[i]] <- data[start:end,]
+        split[[i]] <- c(start, end)
     }
     
     split
@@ -433,12 +433,33 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
     # perform leave-one-out training and use each model's prediction on the holdout set for meta-model's training
     basePredictions <- list()
     for(i in 1:n){
-        currTrain <- as.data.frame(bind_rows(folds[-i]))
-        currTest <- as.data.frame(folds[[i]])
         
+        # current training set is the whole training set withouth the heldout set
+        currTrain <- NULL
+        for(j in 1:n){
+            if(j == i)
+                next()
+            
+            fold = folds[[j]]
+            start = fold[1]
+            end = fold[2]
+            if(is.null(currTrain))
+                currTrain <- train[start:end,]
+            else
+                currTrain <- rbind(currTrain, train[start:end,])
+        }
+        
+        # current test set is the heldout set
+        fold <- folds[[i]]
+        start = fold[1]
+        end = fold[2]
+        currTest <- train[start:end,]
+        currTest$SalePrice <- NULL
+        
+        # TODO: might not store predictions correctly
         for(j in 1:n){
             baseModel <- baseModelList[[j]](currTrain)
-            predictions <- predictSalePrices(baseModel, currTest)
+            predictions <- predict(baseModel, currTest)
             
             if(j > length(basePredictions))
                 basePredictions[[j]] <- predictions
@@ -447,6 +468,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
         }
     }
     
+    # TODO: does not bind predictions column-wise
     metaTrain <- NULL
     for(i in 1:n){
         if(is.null(metaTrain))
@@ -454,7 +476,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
         else
             metaTrain <- cbind(metaTrain, basePredictions[[i]])
     }
-    metaTrain <- cbind(metaTrain, train$SalePrice)
+    #metaTrain <- cbind(metaTrain, as.list(train$SalePrice))
     
     metaTrain
 }
