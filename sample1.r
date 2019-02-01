@@ -33,6 +33,7 @@ testIDs  <- test$Id     # Save the Ids for submission
 train$Id <- NULL        # and remove them in the dataset
 test$Id  <- NULL
 test$SalePrice <- NA    # Test hasn't any SalePrice, then set it as NA
+`%!in%` = Negate(`%in%`)
 
 fullData <- rbind(train, test)
 
@@ -150,6 +151,74 @@ bootstrap3 <- function(data){
     
     data <- data[!(names(data) %in% toDrop)]
     data
+}
+
+
+#Lasso parameters: alpha=1, lambda=0.0015
+#GBR parameters: nrounds=300, max_depth=3, eta = 0.1, gamma = c(0.01),colsample_bytree = c(0.75),subsample = c(0.50),min_child_weight = c(0))
+#Ridge parameters: alpha = 0, lambda = 0.032
+bootstrap4 <- function(data){
+    trainData <- getTrainData(data)
+    testData <- getTestData(data)
+    #-------Removing outliers------
+    trainData <- trainData[-c(524, 1299),]  
+    data <- rbind(trainData, testData)
+    #-------Remove multicollinear------
+    data$SalePrice <- log1p(data$SalePrice)
+    trainData$SalePrice <- log1p(trainData$SalePrice)
+    #-------Correcting skewness of numeric features-------
+    numericnames <- names(which(sapply(data, is.numeric)))
+    factorsnames <- names(data) %!in% numericnames
+    datafactors <- sapply(data[factorsnames], as.factor)
+    datanumeric <-data[numericnames]
+    data <- cbind(datafactors, datanumeric)
+    trainData <- getTrainData(data)
+    skewed_feats <- sapply(trainData[numericnames],skew)
+    skewed_feats = skewed_feats[skewed_feats > 0.65]
+    skewed_feats_names = names(skewed_feats)
+    data[skewed_feats_names] = log1p(data[skewed_feats_names])
+    #-------Replacing all NAs in factors columns with 'None'-------
+    datafactors <- getFactorData(data)
+    nafactors<-(colnames(datafactors)[colSums(is.na(datafactors)) > 0])
+    data[, nafactors]<- factor(data[, nafactors], levels=c(levels(data[, nafactors]), "None"))
+    for (fattore in nafactors) {
+      col <- data[fattore]
+      col[is.na(col)]<- 'None'
+      data[fattore] <- col
+    }
+    #-------Appending dummies and replacing 'None' with 0,then conversione Character -> Factor-------
+    d <- data[, names(datafactors)]
+    d[d=='None']=as.integer(0)
+    data[, names(datafactors)]<-d
+    characters<- which(sapply(data, is.character))
+    data[characters]<- as.numeric(unlist(data[characters]))
+    data <- appendDummyVariables(data)
+    data[names(datafactors)]<- NULL
+    #-----------Adding new feature TotalSF-----------
+    data$TotalSF=data$GrLivArea+data$X1stFlrSF+data$X2ndFlrSF
+    #-----------Replacing all remaining numeric NAs with the mean-----------
+    numericnames <- names(which(sapply(data, is.numeric)))
+    numericnames <- numericnames[numericnames!="SalePrice"]
+    numerici <- data[numericnames]
+    for(i in 1:ncol(numerici)){
+      numerici[is.na(numerici[,i]), i] <- mean(numerici[,i], na.rm = TRUE)
+    }
+    data[numericnames] <- numerici
+    #----------Drop not relevant features-----------
+    notRelevant <- c('X1stFlrSF', 'TotRmsAbvGrd', 'X2ndFlrSF','GarageArea')
+    toRemove <- names(data) %in% notRelevant
+    data <- numerical[!toRemove]
+    #------------Models---------------
+    testData <- getTestData(data)
+    lasso <- getLassoModel(data)
+    ridge <- getRidgeModel(data)
+    xgb   <- getGradientBoostingModel(data)
+    predictionslasso <- expm1(predict(lasso, testData))
+    predictionsridge <- expm1(predict(ridge, testData))
+    predictionsxgb   <- expm1(predict(xgb, testData))
+    res <- (2*predictionslasso+1.5*predictionsridge+1.5*predictionsxgb)/5
+    predictionDF <- data.frame(Id = testIDs, SalePrice = res)
+    write.csv(predictionDF, file = "ugo.csv", row.names = FALSE)
 }
 
 # here instructions to automatically perform bootstrapping, test on real test set and saving predictions to file
