@@ -157,6 +157,7 @@ bootstrap3 <- function(data){
 #Lasso parameters: alpha=1, lambda=0.0015
 #GBR parameters: nrounds=300, max_depth=3, eta = 0.1, gamma = c(0.01),colsample_bytree = c(0.75),subsample = c(0.50),min_child_weight = c(0))
 #Ridge parameters: alpha = 0, lambda = 0.032
+#Kaggle score: 0.11708
 bootstrap4 <- function(data){
     trainData <- getTrainData(data)
     testData <- getTestData(data)
