@@ -40,10 +40,11 @@ main <- function(data){
     # Clean features
     data <- bootstrap(data)
     # Features selection
+    relevantFeats <- importanceSelection(data, getLassoModel, 10)
     # Prediction
-    pred <- runPrediction(data)
+    pred <- test(relevantFeats)
     # Write output
-    savePredictionsOnFile(testIDs, pred, "out/2019_02_01_mod.csv")
+    savePredictionsOnFile(testIDs, pred, "out/2019_02_01_tuned4Models.csv")
 }
 
 bootstrap <- function(data){
@@ -61,14 +62,17 @@ bootstrap <- function(data){
     data <- removeMulticollinearFeatures(data)
 }
 
-runPrediction <- function(data){
-    testData <- getTestData(data)
+test <- function(data){
     lasso <- getLassoModel(data)
     ridge <- getRidgeModel(data)
     xgb   <- getGradientBoostingModel(data)
-    predictionslasso <- expm1(predict(lasso, testData))
-    predictionsridge <- expm1(predict(ridge, testData))
-    predictionsxgb   <- expm1(predict(xgb, testData))
-    res <- (2*predictionslasso+1.5*predictionsridge+1.5*predictionsxgb)/5
+    svm   <- getSVM(data)
+    
+    predictionsLasso <- predictSalePrices(lasso, data)
+    predictionsRidge <- predictSalePrices(ridge, data)
+    predictionsXGB   <- predictSalePrices(xgb, data)
+    predictionsSVM   <- predictSalePrices(svm, data)
+
+    res <- (2*predictionsLasso + 1.5*predictionsRidge + 1.5*predictionsXGB + 2*predictionsSVM)/7
     res
 }

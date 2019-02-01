@@ -68,7 +68,7 @@ predictSalePrices <- function(model, data, checkSkew = T){
     test$SalePrice <- NULL
     predictions <- predict(model, test)
     if (checkSkew == T && SKEWCORRECTION==TRUE)
-        predictions <- exp(predictions)
+        predictions <- expm1(predictions)
     predictions
 }
 
@@ -174,8 +174,8 @@ getSVM <- function(data){
     set.seed(12345)
     trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
     train <- getTrainData(data)
-    
-    model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10)
+    grid <- expand.grid(C=c(0.88, 0.9)) 
+    model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10, tuneGrid=grid)
 }
 
 # --- Lasso ---
@@ -187,7 +187,7 @@ getLassoModel <- function(data){
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    grid <- expand.grid(alpha = 1, lambda = 0.0045)
+    grid <- expand.grid(alpha = 1, lambda = 0.0015)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
     
     model
@@ -249,12 +249,12 @@ getGradientBoostingModel <- function(data){
     
     control <- trainControl(method="cv", number = 10)
     grid <- expand.grid(nrounds = 300, #c(100,200,300),
-                        max_depth = 4, #c(3:7),
-                        eta = 0.05, #c(0.05, 1),
-                        gamma = c(0.01),
-                        colsample_bytree = c(0.75),
-                        subsample = c(0.50),
-                        min_child_weight = c(0))
+                        max_depth = 3, #c(3:7),
+                        eta = 0.1, #c(0.05, 1),
+                        gamma = 0.01,
+                        colsample_bytree = 0.75,
+                        subsample = 0.50,
+                        min_child_weight = 0)
     model <- train(x = train, y = prices, method = "xgbTree", trControl = control, tuneGrid = grid, allowParallel = T)
     
     model
@@ -302,4 +302,14 @@ avgPredict <- function(data, avgModel){
     
     avgPreds <- rowSums(preds) / totW
     avgPreds
+}
+
+# Old methods
+old_predictSalePrices <- function(model, data, checkSkew = T){
+    test <- getTestData(data)
+    test$SalePrice <- NULL
+    predictions <- predict(model, test)
+    if (checkSkew == T && SKEWCORRECTION==TRUE)
+        predictions <- exp(predictions)
+    predictions
 }
