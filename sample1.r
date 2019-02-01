@@ -208,7 +208,7 @@ bootstrap4 <- function(data){
     #----------Drop not relevant features-----------
     notRelevant <- c('X1stFlrSF', 'TotRmsAbvGrd', 'X2ndFlrSF','GarageArea')
     toRemove <- names(data) %in% notRelevant
-    data <- numerical[!toRemove]
+    data <- data[!toRemove]
     #------------Models---------------
     testData <- getTestData(data)
     lasso <- getLassoModel(data)
