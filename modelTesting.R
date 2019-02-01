@@ -401,6 +401,64 @@ testEnsembleModelOnPartitions <- function(ensembleList, partitions){
     finalRes
 }
 
+# splits data into k almost-equal sized parts and returns them as a list
+getKFolds <- function(data, k){
+    n <- nrow(data)
+    chunkSize <- as.integer(n/k) + 1
+    
+    split <- list()
+    for(i in 1:k){
+        start <- (i-1) * chunkSize
+        end <- i * chunkSize - 1
+        if(end > n)
+            end <- n
+        
+        split[[i]] <- data[start:end,]
+    }
+    
+    split
+}
+
+# performs k-fold CV with k being the number of base models selected; the column-wise concatenation of each output will then be fed into the specified meta-model
+# baseModelList is a list of model constructors, and metaModel is a model constructor as well
+getStackedRegressor <- function(data, baseModelList, metaModel){
+    n <- length(baseModelList)
+    if(n <= 0)
+        stop("Base model constructors' list cannot be empty.")
+    
+    # split training data into n folds
+    train <- getTrainData(data)
+    folds <- getKFolds(train, n)
+    
+    # perform leave-one-out training and use each model's prediction on the holdout set for meta-model's training
+    basePredictions <- list()
+    for(i in 1:n){
+        currTrain <- as.data.frame(bind_rows(folds[-i]))
+        currTest <- as.data.frame(folds[[i]])
+        
+        for(j in 1:n){
+            baseModel <- baseModelList[[j]](currTrain)
+            predictions <- predictSalePrices(baseModel, currTest)
+            
+            if(j > length(basePredictions))
+                basePredictions[[j]] <- predictions
+            else
+                basePredictions[[j]] <- rbind(basePredictions[[j]], predictions)
+        }
+    }
+    
+    metaTrain <- NULL
+    for(i in 1:n){
+        if(is.null(metaTrain))
+            metaTrain <- basePredictions[[i]]
+        else
+            metaTrain <- cbind(metaTrain, basePredictions[[i]])
+    }
+    metaTrain <- cbind(metaTrain, train$SalePrice)
+    
+    metaTrain
+}
+
 # Old methods
 old_predictSalePrices <- function(model, data, checkSkew = T){
     test <- getTestData(data)
