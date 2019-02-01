@@ -263,7 +263,7 @@ getGradientBoostingModel <- function(data){
 # --- Custom ensemble models go here ---
 
 # modelList is a list of model constructors; weights is an array to perform a weighted average of the predictions
-getAveragingModel <- function(data, modelList, weights){
+createEnsembleModel <- function(modelList, weights, data){
     n <- length(modelList)
     
     if(n <= 0)
@@ -283,14 +283,13 @@ getAveragingModel <- function(data, modelList, weights){
     avgModel
 }
 
-# produces predictions for the averaging model
-avgPredict <- function(data, avgModel){
-    test <- getTestData(data)
+# produces predictions for the ensemble model
+ensemblePredict <- function(ensembleModel, data, checkSkew=T){
     preds <- NULL
     totW <- 0
-    for(i in 1:length(avgModel$models)){
-        p <- predictSalePrices(avgModel$models[[i]], test)
-        w <- avgModel$weights[[i]]
+    for(i in 1:length(ensembleModel$models)){
+        p <- predictSalePrices(ensembleModel$models[[i]], data, checkSkew)
+        w <- ensembleModel$weights[[i]]
         p <- w * p
         totW <- totW + w
         
@@ -304,6 +303,104 @@ avgPredict <- function(data, avgModel){
     avgPreds
 }
 
+# Single iteration of CV on an ensemble model.
+#
+# Parameters:
+# ===========
+#   -`multiModel`:  list of model constructor
+#   -`data`:        complete dataset used
+#   -`numIters`:    number of iterations
+iterateCrossValidationEnsembleModel <- function(multiModel, modelWeights, data, numIters){
+    data <- getTrainData(data)
+
+    print("Create partitioning...")
+    partitions <- getKDataPartitions(data, numIters)
+
+    print("Train an ensemble for each partition...")
+    ensembleList <- trainEnsembleModelOnPartitions(multiModel, modelWeights, partitions)
+
+    print("Run predictions...")
+    result <- testEnsembleModelOnPartitions(ensembleList, partitions)
+    result
+}
+
+# Returns K partitions in train/test set of data according to the balance value.
+#
+# Parameters:
+# ==========
+#   -`data`:    dataset from which produce partitions
+#   -`k`:       number of partitions
+#   -`balance`: factor of balancing in training and test set
+#
+# Return:
+# =======
+#   -`partitions`: list of partitions train/test set
+getKDataPartitions <- function(data, k, balance=0.8){
+    partitions <- list()
+    for(i in 1:k){
+        # Split in train/test data
+        trainSamples <- data$SalePrice %>% createDataPartition(p=balance, list=FALSE)
+        trainData <- data[trainSamples, ]
+        testData  <- data[-trainSamples, ]
+        
+        partitions[[i]] <- list(trainData = trainData, testData = testData)
+    }
+    partitions
+}
+
+# Given a set of partitions, train an ensemble model for each partition.
+#
+# Parameters:
+# ===========
+#   -`models`:      list of base-model constructor which compose the ensemble
+#   -`weights`:     list of weights for each base-model
+#   -`partitions`:  list of partitions train/test set
+#
+# Return:
+# =======
+#   -`ensembleList`: list of ensemble models trained on the associated partitions
+trainEnsembleModelOnPartitions <- function(models, weights, partitions){
+    ensembleList <- list()
+    for(i in 1:length(partitions)){
+        currentPartition <- partitions[[i]]
+        trainData <- currentPartition$trainData
+
+        ensemble <- createEnsembleModel(models, weights, trainData) 
+        ensembleList[[i]] <- ensemble
+    }
+    ensembleList
+}
+
+# Given a set of partitions and a list ensemble models, return the result (R2, RMSE, MAE) of the predictions.
+#
+# Parameters:
+# ===========
+#   -`ensembleList`:    list of trained ensemble models
+#   -`partitions`:      list of partitions train/test set
+# 
+# Return:
+# =======
+#   -`finalRes`: dataframe with a row for each test and with statistics as columns
+testEnsembleModelOnPartitions <- function(ensembleList, partitions){
+    finalRes <- data.frame()
+    for(i in 1:length(partitions)){
+        currentPartition <- partitions[[i]]
+        testData  <- currentPartition$testData
+        groundTruth <- testData$SalePrice
+        testData$SalePrice <- NA
+        ensemble <- ensembleList[[i]]
+
+        pred <- ensemblePredict(ensemble, testData, checkSkew=F)
+
+        res   <- data.frame( R2 = R2(pred, groundTruth),
+                             RMSE = RMSE(pred, groundTruth),
+                             MAE = MAE(pred, groundTruth))
+
+        finalRes <- rbind(finalRes, res)
+    }
+    finalRes
+}
+
 # Old methods
 old_predictSalePrices <- function(model, data, checkSkew = T){
     test <- getTestData(data)
@@ -313,3 +410,5 @@ old_predictSalePrices <- function(model, data, checkSkew = T){
         predictions <- exp(predictions)
     predictions
 }
+
+

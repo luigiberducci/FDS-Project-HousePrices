@@ -76,3 +76,36 @@ test <- function(data){
     res <- (2*predictionsLasso + 1.5*predictionsRidge + 1.5*predictionsXGB + 2*predictionsSVM)/7
     res
 }
+
+testCVonEnsemble <- function(data){
+    data <- bootstrap(data)
+    data <- importanceSelection(data, getLassoModel)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel)
+    weights <- c(2, 1.5, 1.5)
+
+    result <- iterateCrossValidationEnsembleModel(models, weights, data, 10)
+    result
+}
+
+testConsistencyEnsemble <- function(data){
+    data <- bootstrap(data)
+    data <- importanceSelection(data, getLassoModel)
+
+    lasso <- getLassoModel(data)
+    ridge <- getRidgeModel(data)
+    xgb   <- getGradientBoostingModel(data)
+    predictionsLasso <- predictSalePrices(lasso, data)
+    predictionsRidge <- predictSalePrices(ridge, data)
+    predictionsXGB   <- predictSalePrices(xgb, data)
+
+    manualRes <- (2*predictionsLasso + 1.5*predictionsRidge + 1.5*predictionsXGB)/5
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel)
+    weights <- c(2, 1.5, 1.5)
+    ensemble <- createEnsembleModel(models, weights, data)
+    ensembleRes <- ensemblePredict(ensemble, data)
+
+    result <- data.frame(manual=manualRes, ensemble=ensembleRes)
+    result
+}
