@@ -100,14 +100,15 @@ removeMulticollinearFeatures <- function(data){
 }
 
 #iteratively drop least important features, minimizing the given model's average RMSE
-importanceSelection <- function(data, modelConstructor, maxRounds = 10){
+importanceSelection <- function(data, modelConstructor, maxRounds = 10, verbose = F){
     round <- 0
     
     model <- modelConstructor(data)
     rmse <- mean(model$results$RMSE)
     
     while(round < maxRounds){
-        print(paste("RMSE (", round, "): ", rmse))
+        if(verbose)
+            print(paste("RMSE (", round, "): ", rmse))
         
         imp <- varImp(model)$importance
         features <- rownames(imp)
@@ -124,10 +125,12 @@ importanceSelection <- function(data, modelConstructor, maxRounds = 10){
             rmse <- newRmse
         }
         else{
-            print(paste("RMSE did not improve. Stopping with RMSE: ", rmse))
+            if(verbose)
+                print(paste("RMSE did not improve. Stopping with RMSE: ", rmse))
             break
         }
-        print("")
+        if(verbose)
+            print("")
         
         round <- round + 1
     }
