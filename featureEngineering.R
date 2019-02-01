@@ -29,15 +29,96 @@ DUMMIESVAR <<- c()
 removeOutliers <- function(data){
     trainData <- getTrainData(data)
     testData <- getTestData(data)
- 
-    trainData <- trainData %>%
-        filter(SalePrice < 600000) %>%                              #4      houses
-        filter(LotFrontage <= 200) %>%                              #2      houses
-        filter(LotArea <= 100000) %>%                               #4      houses
-        filter(Fireplaces < 3) %>%                                  #5      houses
-        filter(!(MiscFeature %in% c("TenC", "Othr", "Gar2"))) %>%   #4      houses
-        filter(MiscVal < 5000)                                      #2      houses
+
+    trainData <- trainData[-c(524, 1299),]
+
     data <- rbind(trainData, testData)
+    data
+}
+
+handleSkewness <- function(data){
+    data <- correctSkewnessSalePrice(data)
+    data <- encodeCharAsFactors(data)
+    data <- correctSkewnessPredictors(data)
+}
+
+correctSkewnessSalePrice <- function(data){
+    SKEWCORRECTION <<- TRUE
+    data$SalePrice <- log1p(data$SalePrice)
+    data
+}
+
+encodeCharAsFactors <- function(data){
+    numData  <- getNumericalData(data)
+    
+    numNames <- getNumericalFields(data)
+    notNumNames <- getNotNumericalFields(data)
+    
+    factData <- sapply(data[notNumNames], as.factor)
+    data <- cbind(factData, numData)
+}
+
+correctSkewnessPredictors <- function(data){
+    # Notice: skew correction based only on training data
+    trainData <- getTrainData(data)
+    numNames <- getNumericalFields(data)
+
+    skewness <- sapply(trainData[numNames], skew)
+    skewedFeatureNames = names(skewness[skewness > 0.65])
+
+    data[skewedFeatureNames] = log1p(data[skewedFeatureNames])
+    data
+}
+
+handleNA <- function(data){
+    data <- replaceNAwtNone(data)
+    data <- replaceNoneWt0(data)
+    data <- encodeCharAsNumeric(data)
+}
+
+replaceNAwtNone <- function(data){
+    factData <- getNotNumericalData(data)
+
+    factWtNA <- colnames(factData)[colSums(is.na(factData)) > 0]
+    data[, factWtNA] <- factor(data[, factWtNA],                                 levels=c(levels(data[, factWtNA]), "None"))
+    for (fact in factWtNA) {
+        col <- data[fact]
+        col[is.na(col)]<- 'None'
+        data[fact] <- col
+    }
+    data
+}
+
+replaceNoneWt0 <- function(data){
+    notNumData <- getNotNumericalData(data)
+    d <- data[, names(notNumData)]
+    d[d=='None']=as.integer(0)
+    data[, names(notNumData)] <- d
+    characters<- which(sapply(data, is.character))
+    data[characters]<- as.numeric(unlist(data[characters]))
+    data
+}
+
+encodeCharAsNumeric <- function(data){
+    characters  <- getCharFields(data)
+    data[characters] <- as.numeric(unlist(data[characters]))
+    data
+}
+
+replaceRemainingNAwtMean <- function(data){ 
+    numericnames <- names(which(sapply(data, is.numeric)))
+    numericnames <- numericnames[numericnames!="SalePrice"]
+    numerici <- data[numericnames]
+    for(i in 1:ncol(numerici)){
+        numerici[is.na(numerici[,i]), i] <- mean(numerici[,i], na.rm = TRUE)
+    }
+    data[numericnames] <- numerici
+    data
+}
+
+removeMulticollinearFeatures <- function(data){
+    multicollinear <- c("X1stFlrSF", "X2ndFlrSF", "GarageArea", "TotRmsAbvGrd")
+    data <- data[!colnames(data) %in% multicollinear]
     data
 }
 
@@ -80,22 +161,6 @@ addNewFeatures <- function(data, totBathRms=T, carsXarea=T, recentGarage=T, rece
     # from factor to ordinal 0 (poor), 1 (low), 2 (medium), 3 (rich)
     # Note: seems that neigh conversion doesn't improve the score
     # data <- convertNeighboroodToClasses(data)
-    data
-}
-
-removeMulticollinearFeatures <- function(data){
-    base <- c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")
-    bathrooms <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath")
-    garage1 <- c("GarageCars") 
-    garage2 <- c("GarageType", "GarageYrBlt")
-    multicollinear <- base
-    if(NEWFEATBATH)
-        multicollinear <- c(multicollinear, bathrooms)
-    if(NEWFEATCARSXAREA) 
-        multicollinear <- c(multicollinear, garage1)
-    if(NEWFEATRECENTG & NEWFEATRECENTTYPE)
-        multicollinear <- c(multicollinear, garage2)
-    data <- data[!colnames(data) %in% multicollinear]
     data
 }
 
@@ -536,11 +601,25 @@ addFeatureRecentType <- function(data) {
   data
 }
 
+addFeatureTotalSF <- function(data) {
+  prices <- data$SalePrice
+  data$SalePrice <- NULL
+  data$TotalSF <- data$GrLivArea + data$X1stFlrSF + data$X2ndFlrSF
+  data$SalePrice <- prices
+  data
+}
+
 # Factor one-hot encoding functions
 
 removeFactors <- function(data){
   factNames <- getFactorFields(data)
   data <- data[!(names(data) %in% factNames)]
+  data
+}
+
+removeNotNumeric <- function(data){
+  notNumNames <- getNotNumericalFields(data)
+  data <- data[!(names(data) %in% notNumNames)]
   data
 }
 
@@ -558,7 +637,7 @@ appendDummyVariables <- function(data){
 
 convertDummyVariables <- function(data){
     data <- appendDummyVariables(data)
-    data <- removeFactors(data)
+    data <- removeNotNumeric(data)
     data
 }
 
@@ -567,31 +646,43 @@ getFactorData <- function(data) {
   newData
 }
 
+getNumericalData <- function(data) {
+  newData <- data[, getNumericalFields(data)]
+  newData
+}
+
+getCharData <- function(data) {
+  newData <- data[, getCharFields(data)]
+  newData
+}
+
+getNotNumericalData <- function(data) {
+  newData <- data[, getNotNumericalFields(data)]
+  newData
+}
+
 getFactorFields <- function(data) {
   newData <- which(sapply(data, is.factor))
   names(newData)
 }
 
-# Main functions
-correctSkewSalePrice <- function(data){
-  SKEWCORRECTION <<- TRUE
-  data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
-  data
+getNumericalFields <- function(data) {
+  newData <- which(sapply(data, is.numeric))
+  names(newData)
 }
 
-correctSkewPredictors <- function(data){
-    factors <- getFactorFields(data)
-    numericFeats <- names(which(sapply(data, is.numeric)))
-    numericFeats <- numericFeats[numericFeats != "SalePrice"]
-    numericData <- data[numericFeats]
-    skewness <- showSkewness(numericData) %>% filter(!is.nan(Skewness))
-    skewFeats <- skewness$Feature[abs(skewness$Skewness) > 0.65]
-    skewFeats <- setdiff(skewFeats, factors)
-    transformation <- preProcess(data[skewFeats], method = "BoxCox")
-    processed <- predict(transformation, data[skewFeats])
-    data[skewFeats] <- processed
-    data
+getCharFields <- function(data) {
+  newData <- which(sapply(data, is.character))
+  names(newData)
 }
+
+getNotNumericalFields <- function(data){
+    newData <- data[, !names(data) %in% getNumericalFields(data)]
+    names(newData)
+}
+
+# Main functions
+
 
 featureEngineering <- function(data){
   #Emanuele
@@ -632,3 +723,58 @@ getOnlyRelevantFeatures <- function(data) {
   relevant <- numerical[!toRemove]
   relevant
 }
+
+
+# Old methods - before 01 Feb 2019
+old_removeOutliers <- function(data){
+    trainData <- getTrainData(data)
+    testData <- getTestData(data)
+ 
+    trainData <- trainData %>%
+        filter(SalePrice < 600000) %>%                              #4      houses
+        filter(LotFrontage <= 200) %>%                              #2      houses
+        filter(LotArea <= 100000) %>%                               #4      houses
+        filter(Fireplaces < 3) %>%                                  #5      houses
+        filter(!(MiscFeature %in% c("TenC", "Othr", "Gar2"))) %>%   #4      houses
+        filter(MiscVal < 5000)                                      #2      houses
+    data <- rbind(trainData, testData)
+    data
+}
+
+old_correctSkewSalePrice <- function(data){
+  SKEWCORRECTION <<- TRUE
+  data$SalePrice[!is.na(data$SalePrice)] <- log(data$SalePrice[!is.na(data$SalePrice)])
+  data
+}
+
+old_correctSkewPredictors <- function(data){
+    factors <- getFactorFields(data)
+    numericFeats <- names(which(sapply(data, is.numeric)))
+    numericFeats <- numericFeats[numericFeats != "SalePrice"]
+    numericData <- data[numericFeats]
+    skewness <- showSkewness(numericData) %>% filter(!is.nan(Skewness))
+    skewFeats <- skewness$Feature[abs(skewness$Skewness) > 0.65]
+    skewFeats <- setdiff(skewFeats, factors)
+    transformation <- preProcess(data[skewFeats], method = "BoxCox")
+    processed <- predict(transformation, data[skewFeats])
+    data[skewFeats] <- processed
+    data
+}
+
+old_removeMulticollinearFeatures <- function(data){
+    base <- c("X1stFlrSF","GarageArea", "TotRmsAbvGrd")
+    bathrooms <- c("BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath")
+    garage1 <- c("GarageCars") 
+    garage2 <- c("GarageType", "GarageYrBlt")
+    multicollinear <- base
+    if(NEWFEATBATH)
+        multicollinear <- c(multicollinear, bathrooms)
+    if(NEWFEATCARSXAREA) 
+        multicollinear <- c(multicollinear, garage1)
+    if(NEWFEATRECENTG & NEWFEATRECENTTYPE)
+        multicollinear <- c(multicollinear, garage2)
+    data <- data[!colnames(data) %in% multicollinear]
+    data
+}
+
+
