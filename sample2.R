@@ -36,18 +36,7 @@ test$SalePrice <- NA    # Test hasn't any SalePrice, then set it as NA
 
 fullData <- rbind(train, test)
 
-main <- function(data){
-    # Clean features
-    data <- bootstrap(data)
-    # Features selection
-    relevantFeats <- importanceSelection(data, getLassoModel, 10)
-    # Prediction
-    pred <- test(relevantFeats)
-    # Write output
-    savePredictionsOnFile(testIDs, pred, "out/2019_02_01_tuned4Models.csv")
-}
-
-bootstrap <- function(data){
+bootstrap <- function(data, totBathRms=F, carsXarea=F, recentGarage=F, totalSF=T){
     data <- removeOutliers(data)
     data <- handleSkewness(data)
     
@@ -56,10 +45,21 @@ bootstrap <- function(data){
     data <- appendDummyVariables(data)
     data[futureDeletionNames] <- NULL
     
-    data <- addFeatureTotalSF(data)
+    data <- addNewFeatures(data, totBathRms, carsXarea, recentGarage, totalSF)
 
     data <- replaceRemainingNAwtMean(data)
     data <- removeMulticollinearFeatures(data)
+}
+
+testCorrectnessRefactoring <- function(data){
+    # Clean features
+    data <- bootstrap(data)
+    # Features selection
+    relevantFeats <- importanceSelection(data, getLassoModel, 10)
+    # Prediction
+    pred <- test(relevantFeats)
+    # Write output
+    savePredictionsOnFile(testIDs, pred, "out/2019_02_01_1feat.csv")
 }
 
 test <- function(data){
@@ -76,6 +76,7 @@ test <- function(data){
     res <- (2*predictionsLasso + 1.5*predictionsRidge + 1.5*predictionsXGB + 2*predictionsSVM)/7
     res
 }
+
 
 testCVonEnsemble <- function(data){
     data <- bootstrap(data)
@@ -108,4 +109,98 @@ testConsistencyEnsemble <- function(data){
 
     result <- data.frame(manual=manualRes, ensemble=ensembleRes)
     result
+}
+
+compareNewFeatures3 <- function(data){
+    # By default, there is a new feature "totalSF"  
+    data3 <- bootstrap(data, recentGarage=T)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    weights <- c(2, 1.5, 1.5, 2)
+
+    cv3 <- iterateCrossValidationEnsembleModel(models, weights, data3, 5)
+    cv3
+}
+
+compareNewFeatures2 <- function(data){
+    # By default, there is a new feature "totalSF"  
+    data2 <- bootstrap(data, carsXarea=T)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    weights <- c(2, 1.5, 1.5, 2)
+
+    cv2 <- iterateCrossValidationEnsembleModel(models, weights, data2, 5)
+    cv2
+}
+
+compareNewFeatures1 <- function(data){
+    # By default, there is a new feature "totalSF"  
+    data1 <- bootstrap(data, totBathRms=T)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    weights <- c(2, 1.5, 1.5, 2)
+
+    cv1 <- iterateCrossValidationEnsembleModel(models, weights, data1, 5)
+    cv1
+}
+
+library(gtools)
+
+testEnsembleWeights <- function(data){
+    allWeights <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5)
+    permutation <- permutations(10, 4, allWeights, repeats.allowed=T)
+    numPermutations <- length(permutation[,1])
+    numIterations <- 10
+
+    data <- bootstrap(data)
+    data <- importanceSelection(data, getLassoModel)
+    data <- getTrainData(data)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    weights <- c(1, 1, 1, 1)
+   
+
+    partitions <- getKDataPartitions(data, numIterations)
+    finalRes <- data.frame()
+    for(i in 1:numIterations){
+        partition <- partitions[[i]]
+
+        ensemble <- createEnsembleModel(models, weights, partition$trainData)
+        groundTruth <- partition$testData$SalePrice
+        partition$testData$SalePrice <- NA
+        minRMSE <- 1
+        for(j in 1:numPermutations){
+            weights <- permutation[j,]
+            ensemble$weights <- weights
+
+            pred <- ensemblePredict(ensemble, partition$testData, checkSkew=F)
+            rmse <- RMSE(pred, groundTruth)
+            if(rmse<minRMSE){
+                minWeights <- weights
+                minRMSE <- rmse
+            }
+        }
+        res   <- data.frame(w1 = weights[1],
+                            w2 = weights[2],
+                            w3 = weights[3],
+                            w4 = weights[4],
+                            R2 = R2(pred, groundTruth),
+                            RMSE = RMSE(pred, groundTruth),
+                            MAE = MAE(pred, groundTruth))
+        finalRes <- rbind(finalRes, res)
+        str(finalRes)
+    }
+    finalRes
+}
+
+test5models <- function(data){
+    data <- bootstrap(data, totBathRms=T, carsXarea=T, totalSF=T)
+    data <- importanceSelection(data, getLassoModel)
+
+    models <- c(getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    weights <- c(2, 1.5, 1.5, 1.5, 2)
+
+    ensemble <- createEnsembleModel(models, weights, data)
+    pred <- ensemblePredict(ensemble, data)
+    savePredictionsOnFile(testIDs, pred, "out/5models_with_new_feats.csv")
 }

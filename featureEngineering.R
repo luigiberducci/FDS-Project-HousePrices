@@ -22,6 +22,7 @@ NEWFEATBATH       <<- FALSE
 NEWFEATCARSXAREA  <<- FALSE
 NEWFEATRECENTG    <<- FALSE
 NEWFEATRECENTTYPE <<- FALSE
+NEWFEATTOTALSF    <<- FALSE
 DUMMIESVAR <<- c()
 
 # Helper Functions
@@ -117,7 +118,7 @@ replaceRemainingNAwtMean <- function(data){
 }
 
 removeMulticollinearFeatures <- function(data){
-    multicollinear <- c("X1stFlrSF", "X2ndFlrSF", "GarageArea", "TotRmsAbvGrd")
+    multicollinear <- c("X1stFlrSF", "X2ndFlrSF", "GarageArea", "TotRmsAbvGrd", "GarageCars", "FullBath", "HalfBath", "BsmtFullBath", "BsmtHalfBath")
     data <- data[!colnames(data) %in% multicollinear]
     data
 }
@@ -141,7 +142,7 @@ encodeFeatures <- function(data){
     data
 }
 
-addNewFeatures <- function(data, totBathRms=T, carsXarea=T, recentGarage=T, recentType=T){
+addNewFeatures <- function(data, totBathRms=F, carsXarea=F, recentGarage=F, totalSF=F){
     if(totBathRms){
         data <- addFeatureBathrooms(data)
         NEWFEATBATH <<- TRUE
@@ -154,9 +155,9 @@ addNewFeatures <- function(data, totBathRms=T, carsXarea=T, recentGarage=T, rece
         data <- addFeatureRecentGarage(data)
         NEWFEATRECENTG <<- TRUE
     }
-    if(recentType){
-        data <- addFeatureRecentType(data)
-        NEWFEATRECENTTYPE <<- TRUE
+    if(totalSF){
+        data <- addFeatureTotalSF(data)
+        NEWFEATTOTALSF <<- TRUE
     }
     # from factor to ordinal 0 (poor), 1 (low), 2 (medium), 3 (rich)
     # Note: seems that neigh conversion doesn't improve the score
@@ -577,6 +578,7 @@ addFeatureRecentGarage <- function(data) {
     prices <- data$SalePrice
     data$SalePrice <- NULL
 
+    data$RecentGarage[is.na(data$GarageYrBlt)] <- 0
     data$RecentGarage[data$GarageYrBlt < 2000] <- 0
     data$RecentGarage[data$GarageYrBlt >= 2000] <- 1
     data$RecentGarage <- as.factor(data$RecentGarage)
@@ -594,9 +596,15 @@ addFeatureCarsXArea <- function(data) {
 }
 
 addFeatureRecentType <- function(data) {
-  prices <- data$SalePrice
-  data$SalePrice <- NULL
-  data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
+    if(data$RecentGarage==NULL){
+        data <- addFeatureRecentGarage(data)
+        data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
+        data$RecentGarage<-NULL
+    } else {
+        data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
+    }
   data$SalePrice <- prices
   data
 }

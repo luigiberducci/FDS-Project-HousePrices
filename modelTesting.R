@@ -172,9 +172,10 @@ getLinearModelWithBackwardSelection <- function(data, AREYOUSURE=F){
 
 getSVM <- function(data){
     set.seed(12345)
-    trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+    # trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+    trctrl <- trainControl(method = "cv", number = 10)
     train <- getTrainData(data)
-    grid <- expand.grid(C=c(0.88, 0.9)) 
+    grid <- expand.grid(C=0.88)
     model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10, tuneGrid=grid)
 }
 
