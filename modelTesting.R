@@ -178,6 +178,8 @@ getSVM <- function(data){
     model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10)
 }
 
+# --- Lasso ---
+
 getLassoModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data)
@@ -190,6 +192,8 @@ getLassoModel <- function(data){
     
     model
 }
+
+# --- Ridge ---
 
 getRidgeModel <- function(data){
     set.seed(12345)
@@ -204,7 +208,8 @@ getRidgeModel <- function(data){
     model
 }
 
-#Elastic Net model
+# --- Elastic Net ---
+
 getENModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data)
@@ -218,7 +223,8 @@ getENModel <- function(data){
     model
 }
 
-#Neural Net model
+# --- Neural Network ---
+
 getNeuralModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data, scaled = T)
@@ -233,7 +239,8 @@ getNeuralModel <- function(data){
     model
 }
 
-#Extreme Gradient Boosting model
+# --- Extreme Gradient Boosting (XGB) ---
+
 getGradientBoostingModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data)
@@ -251,4 +258,48 @@ getGradientBoostingModel <- function(data){
     model <- train(x = train, y = prices, method = "xgbTree", trControl = control, tuneGrid = grid, allowParallel = T)
     
     model
+}
+
+# --- Custom ensemble models go here ---
+
+# modelList is a list of model constructors; weights is an array to perform a weighted average of the predictions
+getAveragingModel <- function(data, modelList, weights){
+    n <- length(modelList)
+    
+    if(n <= 0)
+        stop("Model constructors' list cannot be empty.")
+    
+    if(n != length(weights))
+        stop("Model constructors' list and weights do not have the same lenght.")
+    
+    models <- list()
+    for(i in 1:length(modelList))
+        models[[i]] <- modelList[[i]](data)
+    
+    avgModel <- list(type = "Regression")
+    avgModel$models <- models
+    avgModel$weights <- weights
+    
+    avgModel
+}
+
+# produces predictions for the averaging model
+avgPredict <- function(data, avgModel){
+    test <- getTestData(data)
+    preds <- NULL
+    totW <- 0
+    for(i in 1:length(avgModel$models)){
+        p <- predictSalePrices(avgModel$models[[i]], test)
+        w <- avgModel$weights[[i]]
+        p <- w * p
+        totW <- totW + w
+        
+        if(is.null(preds))
+            preds <- p
+        else
+            preds <- cbind(preds, p)
+    }
+    
+    avgPreds <- rowSums(preds) / totW
+    avgPreds
 }

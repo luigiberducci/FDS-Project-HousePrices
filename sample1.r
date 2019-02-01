@@ -224,3 +224,17 @@ bootstrap4 <- function(data){
 
 # here instructions to automatically perform bootstrapping, test on real test set and saving predictions to file
 
+#quick testing function
+test <- function(){
+    fullData <- bootstrap2(fullData)
+    lasso <- getLassoModel(fullData)
+    xgb <- getGradientBoostingModel(fullData)
+    lassoPreds <- predictSalePrices(lasso, fullData)
+    xgbPreds <- predictSalePrices(xgb, fullData)
+    manualPreds <- (2*lassoPreds + xgbPreds)/3
+    
+    avg <- getAveragingModel(fullData, list(getLassoModel, getGradientBoostingModel), list(2,1))
+    avgP <- avgPredict(fullData, avg)
+    
+    print(manualPreds == avgP)
+}
