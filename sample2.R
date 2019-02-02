@@ -250,14 +250,17 @@ testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){
     variants <- c("A", "B")
     nIterations <- 1
 
+    resForBothVariants <- data.frame()
     for (var in variants){
         printf("[Info] Testing variant %s\n", var)
         stackedFormula <- list(baseModelList = theMagic4, 
                                metaModel = metaModel, 
                                variant = var)
         res <- iterateCrossValidationNTimes(getStackedRegressor, data, nIterations, TRUE, stackedFormula)
+        res$Variant <- var
+        resForBothVariants <- rbind(resForBothVariants, res)
     }
-    res
+    resForBothVariants
 }
 
 testMyStackedRegressorWtLM <- function(data){
