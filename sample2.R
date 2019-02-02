@@ -36,6 +36,12 @@ test$SalePrice <- NA    # Test hasn't any SalePrice, then set it as NA
 
 fullData <- rbind(train, test)
 
+getFinalFeatures <- function(data){
+    data <- bootstrap(data)
+    data <- importanceSelection(data, getLassoModel)
+    data
+}
+
 bootstrap <- function(data, totBathRms=T, carsXarea=T, recentGarage=F, totalSF=T){
     data <- removeOutliers(data)
     data <- handleSkewness(data)
@@ -233,4 +239,16 @@ testOptimalWeightsMinimum <- function(data){
     ensemble <- createEnsembleModel(models, weights, data)
     pred <- ensemblePredict(ensemble, data)
     savePredictionsOnFile(testIDs, pred, "out/2019_02_02_4models_min_optimal_weights.csv")
+}
+
+testMyStackedRegressorWtLM <- function(data){
+    data <- getFinalFeatures(data)
+    
+    baseModels <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    metaModel <- getSimpleLinearModel
+
+}
+
+testMyStackedRegressorWtSVM <- function(data){
+   print("Working in progress...") 
 }
