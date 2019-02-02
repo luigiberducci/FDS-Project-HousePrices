@@ -219,7 +219,7 @@ getLassoModel <- function(data, metaModelTuning=F){
     
     control <- trainControl(method="cv", number = 25)
     if(metaModelTuning)
-        grid <- expand.grid(alpha = 1, lambda = 0.0015) #TODO CHANGE TUNING HERE
+        grid <- expand.grid(alpha = 1, lambda = 0.002) #TODO CHANGE TUNING HERE
     else
         grid <- expand.grid(alpha = 1, lambda = 0.0015)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
@@ -255,7 +255,7 @@ getENModel <- function(data, metaModelTuning=F){
     
     control <- trainControl(method="cv", number = 25)
     if(metaModelTuning)
-        grid <- expand.grid(alpha = 0.5, lambda = 0.0015) #TODO CHANGE TUNING HERE
+        grid <- expand.grid(alpha = 0.5, lambda = 0.0035) #TODO CHANGE TUNING HERE
     else
         grid <- expand.grid(alpha = 0.5, lambda = 0.0015)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
