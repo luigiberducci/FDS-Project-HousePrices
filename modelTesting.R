@@ -5,17 +5,17 @@
 library(MASS)
 library(e1071)
 
-iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, neuralModel = F){
+iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, stackedModel = F, recipe = NULL){
     #compute max and min SalePrice to scale back NN's predictions
-    maxPrice <- 0
-    minPrice <- 0
-    if(neuralModel == T){
-        maxPrice = max(data$SalePrice, na.rm = T)
-        minPrice = min(data$SalePrice, na.rm = T)
-    }
+    # maxPrice <- 0
+    # minPrice <- 0
+    # if(neuralModel == T){
+    #     maxPrice = max(data$SalePrice, na.rm = T)
+    #     minPrice = min(data$SalePrice, na.rm = T)
+    # }
     
     # Work only on train data
-    allTrain <- getTrainData(data, scaled = neuralModel)
+    allTrain <- getTrainData(data, scaled = F)
     
     #create partitions for cross validation (avoiding the same splitting due to set.seed)
     sets <- list()
@@ -33,22 +33,45 @@ iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, neuralM
     #for each partion, train a new model on the selected portion of training data and test against the other portion
     for(i in 1:length(sets)){
         set <- sets[[i]]
-        model <- modelConstructor(set$trainData)
-        currentRes <- crossValidation(model, set$testData, neuralModel = neuralModel, maxPrice = maxPrice, minPrice = minPrice)
+        model <- NULL
+        cvData <- NULL
+        if(stackedModel == F){
+            model <- modelConstructor(set$trainData)
+            cvData <- set$testData
+        }
+        else
+            cvData <- rbind(set$trainData, set$testData)
+        
+        currentRes <- crossValidation(model, cvData, stackedModel = stackedModel, recipe = recipe)
         finalRes <- rbind(finalRes, currentRes)
     }
     
     finalRes
 }
 
-crossValidation <- function(model, data, neuralModel = F, maxPrice = 0, minPrice = 0){
+crossValidation <- function(model, data, stackedModel = F, recipe = NULL){
     # Save the groundtruth to future comparison
     groundTruth <- data$SalePrice
-    data$SalePrice <- NA
+    if(stackedModel == F)
+        data$SalePrice <- NA
 
     pred  <- NULL
-    if(neuralModel == T)
-        pred <- predictNeuralSalePrices(model, data, checkSkew = F, isDataScaled = T, maxPrice = maxPrice, minPrice = minPrice)
+    if(stackedModel == T){
+        if(is.null(recipe) || is.null(recipe$baseModelList) || !is.list(recipe$baseModelList) || is.null(recipe$metaModel))
+            stop("Unable to perform CV on a stacked model without a valid recipe.")
+        
+        models <- recipe$baseModelList
+        metaModel <- recipe$metaModel
+        var <- NULL
+        if(!is.null(recipe$variant))
+            var <- recipe$variant
+        
+        stack <- getStackedRegressor(data,
+                                     baseModelList = models,
+                                     metaModel = metaModel,
+                                     variant = var)
+        pred <- stack$predictions
+    }
     else
         pred <- predictSalePrices(model, data, checkSkew = F)
     
@@ -72,7 +95,7 @@ predictSalePrices <- function(model, data, checkSkew = T){
     predictions
 }
 
-#for neural network models only
+# DEPRECATED - for neural network models only
 predictNeuralSalePrices <- function(model, data, checkSkew = T, isDataScaled = F, maxPrice = 0, minPrice = 0){
     test <- getTestData(data, scaled = !isDataScaled)
     test$SalePrice <- NULL
@@ -224,7 +247,7 @@ getENModel <- function(data){
     model
 }
 
-# --- Neural Network ---
+# --- DEPRECATED - Neural Network ---
 
 getNeuralModel <- function(data){
     set.seed(12345)
