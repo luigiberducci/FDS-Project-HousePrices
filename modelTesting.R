@@ -433,6 +433,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     if(n <= 0)
         stop("Base model constructors' list cannot be empty.")
     
+    # allowed strategies for producing the actual predictions on the test set, later fed as meta-test set
     variant <- factor(variant, levels = c("A", "B"))
     if(is.na(variant))
         stop("Unknown variant value. Accepted variants are: A, B")
@@ -448,12 +449,14 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     baseTrainPredictions <- list()
     
     # holds base model's predictions for the actual test set
+    # variant A case: for each base model, stores a list of predictions (one for each model trained on the training set without 1 heldout set)
+    # variant B case: for each base model, stores predictions of a model trained on the whole training set
     baseTestPredictions <- list()
     
     # perform leave-one-out training of base models
-    for(i in 1:n){
+    for(i in 1:n){ # selects the heldout set
         
-        # current training set is the whole training set withouth the heldout set
+        # current training set is the whole training set except the heldout set
         currTrain <- NULL
         for(j in 1:n){
             if(j == i)
@@ -475,31 +478,93 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
         currTest <- train[start:end,]
         currTest$SalePrice <- NULL
         
-        for(j in 1:n){
+        # train the base models, store predictions for the heldout set in order to produce the meta-training set
+        # store base models' predictions on the test set to later use them as meta-test set
+        for(j in 1:n){ # selects the base model
             baseModel <- baseModelList[[j]](currTrain)
             trainPredictions <- predict(baseModel, currTest)
-            testPredictions <- predictSalePrices(baseModel, test, checkSkew = F)
+            
+            testPredictions <- NULL
+            switch(as.character(variant),
+                   "A" = {
+                       # variant A stores each base model's predictions on the test set, for each k-fold training routine
+                       testPredictions <- predictSalePrices(baseModel, test, checkSkew = F)
+                   },
+                   "B" = {
+                       #variant B does nothing here
+                   })
             
             if(j > length(baseTrainPredictions)){
                 baseTrainPredictions[[j]] <- trainPredictions
-                baseTestPredictions[[j]] <- testPredictions
+                
+                switch(as.character(variant),
+                       "A" = {
+                           # variant A needs to initialize the inner list (the one holding each k-fold predictions)
+                           baseTestPredictions[[j]] <- list(testPredictions)
+                       },
+                       "B" = {
+                           #variant B does nothing here
+                       })
             }
             else{
                 baseTrainPredictions[[j]] <- c(baseTrainPredictions[[j]], trainPredictions)
-                baseTestPredictions[[j]] <- c(baseTestPredictions[[j]], testPredictions)
+                
+                switch(as.character(variant),
+                       "A" = {
+                           # variant A simply adds the new predictions in tail of the existing list
+                           baseTestPredictions[[j]][[i]] <- testPredictions
+                       },
+                       "B" = {
+                           #variant B does nothing here
+                       })
             }
         }
     }
     
+    switch(as.character(variant),
+           "A" = {
+               # variant A averages each base model's predictions in order to get that models' entry in the meta-test set
+               averagedPredictions <- list()
+               for(i in 1:n){ # selects the base model
+                   predsList <- baseTestPredictions[[i]]
+                   predsNum <- length(predsList)
+                   predictions <- 0
+                   for(j in 1:predsNum)
+                       predictions <- predictions + predsList[[j]]
+                   predictions <- predictions / predsNum
+                   
+                   # store the averaged predictions as this model's predictions in the meta-test set
+                   if(i > length(averagedPredictions))
+                       averagedPredictions[[i]] <- predictions
+                   else
+                       averagedPredictions[[i]] <- c(averagedPredictions[[i]], predictions)
+               }
+               
+               # uniformity with variant B's case
+               baseTestPredictions <- averagedPredictions
+           },
+           "B" = {
+               #variant B trains each base model on the full training set and uses these new predictions as their entries in the meta-test set
+               for(i in 1:n){ # selects the base model
+                   baseModel <- baseModelList[[i]](train)
+                   predictions <- predictSalePrices(baseModel, test, checkSkew = F)
+                   
+                   if(i > length(baseTestPredictions))
+                       baseTestPredictions[[i]] <- predictions
+                   else
+                       baseTestPredictions[[i]] <- c(baseTestPredictions[[i]], predictions)
+               }
+           })
+    
     # holds columns' names for the conversion to dataframe
     columns <- NULL
-    
+
     # holds predictions of base models to be used as a meta-training set
     metaTrain <- NULL
-    
+
     # holds predictions of base models to be used as a meta-testing set
     metaTest <- NULL
-    
+
     # column-wise merging each base model's predictions on both training and test set
     for(i in 1:n){
         if(is.null(metaTrain)){
@@ -510,36 +575,36 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
             metaTrain <- cbind(metaTrain, baseTrainPredictions[[i]])
             metaTest <- cbind(metaTest, baseTestPredictions[[i]])
         }
-        
+
         modelName <- paste("Model", i, sep = "")
         if(is.null(columns))
             columns <- modelName
         else
             columns <- c(columns, modelName)
     }
-    
+
     # build the meta-training set as a dataframe
     columns <- c(columns, "SalePrice")
     metaTrain <- cbind(metaTrain, as.list(train$SalePrice))
     metaTrain <- as.data.frame(metaTrain)
     colnames(metaTrain) <- columns
     metaTrain <- as.data.frame(sapply(metaTrain, as.numeric))
-    
+
     # build the meta-test set as a dataframe
     metaTest <- cbind(metaTest, as.list(test$SalePrice))
     metaTest <- as.data.frame(metaTest)
     colnames(metaTest) <- columns
     metaTest <- as.data.frame(sapply(metaTest, as.numeric))
-    
+
     # build the meta-model and train it on its meta-training set
     model <- metaModel(metaTrain)
-    
+
     # performs predictions on the meta-test set
     predictions <- predictSalePrices(model, metaTest)
-    
+
     # named list containing both the stacked model and the actual predictions
     ret <- list("model" = model, "predictions" = predictions)
-    
+
     ret
 }
 
