@@ -36,7 +36,7 @@ test$SalePrice <- NA    # Test hasn't any SalePrice, then set it as NA
 
 fullData <- rbind(train, test)
 
-bootstrap <- function(data, totBathRms=F, carsXarea=F, recentGarage=F, totalSF=T){
+bootstrap <- function(data, totBathRms=T, carsXarea=T, recentGarage=F, totalSF=T){
     data <- removeOutliers(data)
     data <- handleSkewness(data)
     
