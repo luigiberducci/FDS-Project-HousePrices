@@ -193,25 +193,31 @@ getLinearModelWithBackwardSelection <- function(data, AREYOUSURE=F){
     backwardModel
 }
 
-getSVM <- function(data){
+getSVM <- function(data, metaModelTuning=F){
     set.seed(12345)
     # trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
     trctrl <- trainControl(method = "cv", number = 10)
     train <- getTrainData(data)
-    grid <- expand.grid(C=0.88)
+    if(metaModelTuning)
+        grid <- expand.grid(C=0.88) #TO DO TUNING HERE
+    else
+        grid <- expand.grid(C=0.88) #DEFAULT TUNING
     model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10, tuneGrid=grid)
 }
 
 # --- Lasso ---
 
-getLassoModel <- function(data){
+getLassoModel <- function(data, metaModelTuning=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    grid <- expand.grid(alpha = 1, lambda = 0.0015)
+    if(metaModelTuning)
+        grid <- expand.grid(alpha = 1, lambda = 0.0015) #TODO CHANGE TUNING HERE
+    else
+        grid <- expand.grid(alpha = 1, lambda = 0.0015)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
     
     model
@@ -219,14 +225,17 @@ getLassoModel <- function(data){
 
 # --- Ridge ---
 
-getRidgeModel <- function(data){
+getRidgeModel <- function(data, metaModelTuning=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    grid <- expand.grid(alpha = 0, lambda = 0.032)
+    if(metaModelTuning)
+        grid <- expand.grid(alpha = 0, lambda = 0.032) #TODO CHANGE TUNING HERE
+    else
+        grid <- expand.grid(alpha = 0, lambda = 0.032)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
 
     model
@@ -234,14 +243,17 @@ getRidgeModel <- function(data){
 
 # --- Elastic Net ---
 
-getENModel <- function(data){
+getENModel <- function(data, metaModelTuning=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    grid <- expand.grid(alpha = 0.5, lambda = 0.0015)
+    if(metaModelTuning)
+        grid <- expand.grid(alpha = 0.5, lambda = 0.0015) #TODO CHANGE TUNING HERE
+    else
+        grid <- expand.grid(alpha = 0.5, lambda = 0.0015)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
     
     model
@@ -265,20 +277,30 @@ getNeuralModel <- function(data){
 
 # --- Extreme Gradient Boosting (XGB) ---
 
-getGradientBoostingModel <- function(data){
+getGradientBoostingModel <- function(data, metaModelTuning=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 10)
-    grid <- expand.grid(nrounds = 300, #c(100,200,300),
+    if(metaModelTuning)
+        grid <- expand.grid(nrounds = 300, #c(100,200,300),
                         max_depth = 3, #c(3:7),
                         eta = 0.1, #c(0.05, 1),
                         gamma = 0.01,
                         colsample_bytree = 0.75,
                         subsample = 0.50,
                         min_child_weight = 0)
+    else
+        grid <- expand.grid(nrounds = 300, #c(100,200,300),
+                        max_depth = 3, #c(3:7),
+                        eta = 0.1, #c(0.05, 1),
+                        gamma = 0.01,
+                        colsample_bytree = 0.75,
+                        subsample = 0.50,
+                        min_child_weight = 0)
+
     model <- train(x = train, y = prices, method = "xgbTree", trControl = control, tuneGrid = grid, allowParallel = T)
     
     model
