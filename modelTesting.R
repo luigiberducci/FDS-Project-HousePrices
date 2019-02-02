@@ -421,18 +421,36 @@ getKFolds <- function(data, k){
 }
 
 # performs k-fold CV with k being the number of base models selected; the column-wise concatenation of each output will then be fed into the specified meta-model
+# the variant parameter is a factor with levels:
+#   - A: averages the test set predictions to build the meta-test set (default)
+#   - B: trains each base model on all folds and the meta-test set is built upon these models' predictions on the test set
+# returns a named list containing the following objects:
+#   - model = stacked model
+#   - predictions = predictions for the test set
 # baseModelList is a list of model constructors, and metaModel is a model constructor as well
-getStackedRegressor <- function(data, baseModelList, metaModel){
+getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     n <- length(baseModelList)
     if(n <= 0)
         stop("Base model constructors' list cannot be empty.")
     
+    variant <- factor(variant, levels = c("A", "B"))
+    if(is.na(variant))
+        stop("Unknown variant value. Accepted variants are: A, B")
+    
     # split training data into n folds
     train <- getTrainData(data)
-    folds <- getKFolds(train, n)
+    trainFolds <- getKFolds(train, n)
     
-    # perform leave-one-out training and use each model's prediction on the holdout set for meta-model's training
-    basePredictions <- list()
+    # actual test set to perform base model's predictions on
+    test <- getTestData(data)
+    
+    # holds base model's predictions during training, to be used for the meta-model's training
+    baseTrainPredictions <- list()
+    
+    # holds base model's predictions for the actual test set
+    baseTestPredictions <- list()
+    
+    # perform leave-one-out training of base models
     for(i in 1:n){
         
         # current training set is the whole training set withouth the heldout set
@@ -441,7 +459,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
             if(j == i)
                 next()
             
-            fold = folds[[j]]
+            fold = trainFolds[[j]]
             start = fold[1]
             end = fold[2]
             if(is.null(currTrain))
@@ -451,7 +469,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
         }
         
         # current test set is the heldout set
-        fold <- folds[[i]]
+        fold <- trainFolds[[i]]
         start = fold[1]
         end = fold[2]
         currTest <- train[start:end,]
@@ -459,23 +477,39 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
         
         for(j in 1:n){
             baseModel <- baseModelList[[j]](currTrain)
-            predictions <- predict(baseModel, currTest)
+            trainPredictions <- predict(baseModel, currTest)
+            testPredictions <- predictSalePrices(baseModel, test, checkSkew = F)
             
-            if(j > length(basePredictions))
-                basePredictions[[j]] <- predictions
-            else
-                basePredictions[[j]] <- c(basePredictions[[j]], predictions)
+            if(j > length(baseTrainPredictions)){
+                baseTrainPredictions[[j]] <- trainPredictions
+                baseTestPredictions[[j]] <- testPredictions
+            }
+            else{
+                baseTrainPredictions[[j]] <- c(baseTrainPredictions[[j]], trainPredictions)
+                baseTestPredictions[[j]] <- c(baseTestPredictions[[j]], testPredictions)
+            }
         }
     }
     
-    # merge each model's prediction on the heldout sets into one dataframe for the meta-model's training
+    # holds columns' names for the conversion to dataframe
     columns <- NULL
+    
+    # holds predictions of base models to be used as a meta-training set
     metaTrain <- NULL
+    
+    # holds predictions of base models to be used as a meta-testing set
+    metaTest <- NULL
+    
+    # column-wise merging each base model's predictions on both training and test set
     for(i in 1:n){
-        if(is.null(metaTrain))
-            metaTrain <- basePredictions[[i]]
-        else
-            metaTrain <- cbind(metaTrain, basePredictions[[i]])
+        if(is.null(metaTrain)){
+            metaTrain <- baseTrainPredictions[[i]]
+            metaTest <- baseTestPredictions[[i]]
+        }
+        else{
+            metaTrain <- cbind(metaTrain, baseTrainPredictions[[i]])
+            metaTest <- cbind(metaTest, baseTestPredictions[[i]])
+        }
         
         modelName <- paste("Model", i, sep = "")
         if(is.null(columns))
@@ -483,16 +517,30 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
         else
             columns <- c(columns, modelName)
     }
+    
+    # build the meta-training set as a dataframe
     columns <- c(columns, "SalePrice")
     metaTrain <- cbind(metaTrain, as.list(train$SalePrice))
     metaTrain <- as.data.frame(metaTrain)
     colnames(metaTrain) <- columns
     metaTrain <- as.data.frame(sapply(metaTrain, as.numeric))
     
+    # build the meta-test set as a dataframe
+    metaTest <- cbind(metaTest, as.list(test$SalePrice))
+    metaTest <- as.data.frame(metaTest)
+    colnames(metaTest) <- columns
+    metaTest <- as.data.frame(sapply(metaTest, as.numeric))
+    
     # build the meta-model and train it on its meta-training set
     model <- metaModel(metaTrain)
-
-    model
+    
+    # performs predictions on the meta-test set
+    predictions <- predictSalePrices(model, metaTest)
+    
+    # named list containing both the stacked model and the actual predictions
+    ret <- list("model" = model, "predictions" = predictions)
+    
+    ret
 }
 
 # Old methods
