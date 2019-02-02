@@ -245,7 +245,7 @@ testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){
     printf <- function(...) cat(sprintf(...))
     data <- getFinalFeatures(data)
     
-    theMagic4 <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    theMagic4 <- list(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
     metaModel <- metaModelConstructor
     variants <- c("A", "B")
     nIterations <- 1
@@ -253,10 +253,10 @@ testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){
     resForBothVariants <- data.frame()
     for (var in variants){
         printf("[Info] Testing variant %s\n", var)
-        stackedFormula <- list(baseModelList = theMagic4, 
+        stackedRecipe <- list(baseModelList = theMagic4, 
                                metaModel = metaModel, 
                                variant = var)
-        res <- iterateCrossValidationNTimes(getStackedRegressor, data, nIterations, TRUE, stackedFormula)
+        res <- iterateCrossValidationNTimes(getStackedRegressor, data, nIterations, TRUE, stackedRecipe)
         res$Variant <- var
         resForBothVariants <- rbind(resForBothVariants, res)
     }
