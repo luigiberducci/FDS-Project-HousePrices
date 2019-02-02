@@ -248,7 +248,7 @@ testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){
     theMagic4 <- list(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
     metaModel <- metaModelConstructor
     variants <- c("A", "B")
-    nIterations <- 1
+    nIterations <- 4
 
     resForBothVariants <- data.frame()
     for (var in variants){
@@ -270,5 +270,15 @@ testMyStackedRegressorWtLM <- function(data){
 
 testMyStackedRegressorWtSVM <- function(data){
     res <- testStackedRegressorWt4BaseModels(data, getSVM)
+    res
+}
+
+testMyStackedRegressorWtRidge <- function(data){
+    res <- testStackedRegressorWt4BaseModels(data, getRidgeModel)
+    res
+}
+
+testMyStackedRegressorWtXGB <- function(data){
+    res <- testStackedRegressorWt4BaseModels(data, getGradientBoostingModel)
     res
 }

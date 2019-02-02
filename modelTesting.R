@@ -237,7 +237,7 @@ getRidgeModel <- function(data, metaModelTuning=F){
     
     control <- trainControl(method="cv", number = 25)
     if(metaModelTuning)
-        grid <- expand.grid(alpha = 0, lambda = 0.032) #TODO CHANGE TUNING HERE
+        grid <- expand.grid(alpha = 0, lambda = 0.0375) #TODO CHANGE TUNING HERE
     else
         grid <- expand.grid(alpha = 0, lambda = 0.032)
     model <- train(x = train, y = prices, method = "glmnet", trControl = control, tuneGrid = grid)
@@ -289,9 +289,9 @@ getGradientBoostingModel <- function(data, metaModelTuning=F){
     
     control <- trainControl(method="cv", number = 10)
     if(metaModelTuning)
-        grid <- expand.grid(nrounds = 300, #c(100,200,300),
+        grid <- expand.grid(nrounds = 200, # c(100,200,300),
                         max_depth = 3, #c(3:7),
-                        eta = 0.1, #c(0.05, 1),
+                        eta = 0.05, #seq(0.01, 1),
                         gamma = 0.01,
                         colsample_bytree = 0.75,
                         subsample = 0.50,
@@ -646,7 +646,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     metaTest <- as.data.frame(sapply(metaTest, as.numeric))
 
     # build the meta-model and train it on its meta-training set
-    model <- metaModel(metaTrain)
+    model <- metaModel(metaTrain, T)
 
     # performs predictions on the meta-test set
     predictions <- predictSalePrices(model, metaTest)
