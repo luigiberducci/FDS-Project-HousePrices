@@ -147,7 +147,7 @@ compareNewFeatures1 <- function(data){
 library(gtools)
 
 testEnsembleWeights <- function(data){
-    allWeights <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5)
+    allWeights <- c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6)
     permutation <- permutations(10, 4, allWeights, repeats.allowed=T)
     numPermutations <- length(permutation[,1])
     numIterations <- 10
@@ -163,6 +163,7 @@ testEnsembleWeights <- function(data){
     partitions <- getKDataPartitions(data, numIterations)
     finalRes <- data.frame()
     for(i in 1:numIterations){
+        cat(sprintf("[Info] Iter=%d\n", i))
         partition <- partitions[[i]]
 
         ensemble <- createEnsembleModel(models, weights, partition$trainData)
@@ -170,6 +171,9 @@ testEnsembleWeights <- function(data){
         partition$testData$SalePrice <- NA
         minRMSE <- 1
         for(j in 1:numPermutations){
+            if(j%%1000==0)
+                cat(sprintf("\t[Info] Perm=%d\n", j))
+
             weights <- permutation[j,]
             ensemble$weights <- weights
 
@@ -180,13 +184,15 @@ testEnsembleWeights <- function(data){
                 minRMSE <- rmse
             }
         }
-        res   <- data.frame(w1 = weights[1],
-                            w2 = weights[2],
-                            w3 = weights[3],
-                            w4 = weights[4],
-                            R2 = R2(pred, groundTruth),
-                            RMSE = RMSE(pred, groundTruth),
-                            MAE = MAE(pred, groundTruth))
+        ensemble$weights <- minWeights
+        bestPred <- ensemblePredict(ensemble, partition$testData, checkSkew=F)
+        res   <- data.frame(w1 = minWeights[1],
+                            w2 = minWeights[2],
+                            w3 = minWeights[3],
+                            w4 = minWeights[4],
+                            R2 = R2(bestPred, groundTruth),
+                            RMSE = RMSE(bestPred, groundTruth),
+                            MAE = MAE(bestPred, groundTruth))
         finalRes <- rbind(finalRes, res)
         str(finalRes)
     }
@@ -198,9 +204,33 @@ test5models <- function(data){
     data <- importanceSelection(data, getLassoModel)
 
     models <- c(getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
-    weights <- c(2, 1.5, 1.5, 1.5, 2)
+    weights <- c(5, 5, 5, 5, 5)
 
     ensemble <- createEnsembleModel(models, weights, data)
     pred <- ensemblePredict(ensemble, data)
-    savePredictionsOnFile(testIDs, pred, "out/5models_with_new_feats.csv")
+    savePredictionsOnFile(testIDs, pred, "out/5models_with_new_feats_remove_multicoll.csv")
+}
+
+testOptimalWeightsAverage <- function(data){
+    data <- bootstrap(data, totBathRms=T, carsXarea=T, totalSF=T)
+    data <- importanceSelection(data, getLassoModel)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    weights <- c(2.6, 1.7, 3.35, 2.25)
+
+    ensemble <- createEnsembleModel(models, weights, data)
+    pred <- ensemblePredict(ensemble, data)
+    savePredictionsOnFile(testIDs, pred, "out/2019_02_02_4models_optimal_weights.csv")
+}
+
+testOptimalWeightsMinimum <- function(data){
+    data <- bootstrap(data, totBathRms=T, carsXarea=T, totalSF=T)
+    data <- importanceSelection(data, getLassoModel)
+
+    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    weights <- c(0.5, 0.5, 3.5, 5)
+
+    ensemble <- createEnsembleModel(models, weights, data)
+    pred <- ensemblePredict(ensemble, data)
+    savePredictionsOnFile(testIDs, pred, "out/2019_02_02_4models_min_optimal_weights.csv")
 }
