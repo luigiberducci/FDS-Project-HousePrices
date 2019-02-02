@@ -35,25 +35,28 @@ iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, stacked
         set <- sets[[i]]
         model <- NULL
         cvData <- NULL
-        if(stackedModel == F){
+        if(stackedModel == F)
             model <- modelConstructor(set$trainData)
-            cvData <- set$testData
+        else{
+            cvTest <- set$testData
+            cvTest$SalePrice <- NA
+            cvData <- rbind(set$trainData, cvTest)
         }
-        else
-            cvData <- rbind(set$trainData, set$testData)
         
-        currentRes <- crossValidation(model, cvData, stackedModel = stackedModel, recipe = recipe)
+        currentRes <- crossValidation(model, set$testData, stackedModel = stackedModel, recipe = recipe, completeData = cvData)
         finalRes <- rbind(finalRes, currentRes)
     }
     
     finalRes
 }
 
-crossValidation <- function(model, data, stackedModel = F, recipe = NULL){
+crossValidation <- function(model, data, stackedModel = F, recipe = NULL, completeData = NULL){
     # Save the groundtruth to future comparison
     groundTruth <- data$SalePrice
     if(stackedModel == F)
         data$SalePrice <- NA
+    else if(is.null(completeData))
+        stop("Stacked regressor requires the complete dataset, even for CV.")
 
     pred  <- NULL
     if(stackedModel == T){
@@ -66,11 +69,12 @@ crossValidation <- function(model, data, stackedModel = F, recipe = NULL){
         if(!is.null(recipe$variant))
             var <- recipe$variant
         
-        stack <- getStackedRegressor(data,
+        stack <- getStackedRegressor(completeData,
                                      baseModelList = models,
                                      metaModel = metaModel,
                                      variant = var)
         pred <- stack$predictions
+        pred <- log1p(pred)
     }
     else
         pred <- predictSalePrices(model, data, checkSkew = F)
