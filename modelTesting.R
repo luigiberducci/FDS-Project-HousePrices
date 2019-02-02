@@ -457,7 +457,6 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
         currTest <- train[start:end,]
         currTest$SalePrice <- NULL
         
-        # TODO: might not store predictions correctly
         for(j in 1:n){
             baseModel <- baseModelList[[j]](currTrain)
             predictions <- predict(baseModel, currTest)
@@ -465,21 +464,35 @@ getStackedRegressor <- function(data, baseModelList, metaModel){
             if(j > length(basePredictions))
                 basePredictions[[j]] <- predictions
             else
-                basePredictions[[j]] <- rbind(basePredictions[[j]], predictions)
+                basePredictions[[j]] <- c(basePredictions[[j]], predictions)
         }
     }
     
-    # TODO: does not bind predictions column-wise
+    # merge each model's prediction on the heldout sets into one dataframe for the meta-model's training
+    columns <- NULL
     metaTrain <- NULL
     for(i in 1:n){
         if(is.null(metaTrain))
             metaTrain <- basePredictions[[i]]
         else
             metaTrain <- cbind(metaTrain, basePredictions[[i]])
+        
+        modelName <- paste("Model", i, sep = "")
+        if(is.null(columns))
+            columns <- modelName
+        else
+            columns <- c(columns, modelName)
     }
-    #metaTrain <- cbind(metaTrain, as.list(train$SalePrice))
+    columns <- c(columns, "SalePrice")
+    metaTrain <- cbind(metaTrain, as.list(train$SalePrice))
+    metaTrain <- as.data.frame(metaTrain)
+    colnames(metaTrain) <- columns
+    metaTrain <- as.data.frame(sapply(metaTrain, as.numeric))
     
-    metaTrain
+    # build the meta-model and train it on its meta-training set
+    model <- metaModel(metaTrain)
+
+    model
 }
 
 # Old methods
