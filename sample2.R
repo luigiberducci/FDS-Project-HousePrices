@@ -241,14 +241,31 @@ testOptimalWeightsMinimum <- function(data){
     savePredictionsOnFile(testIDs, pred, "out/2019_02_02_4models_min_optimal_weights.csv")
 }
 
-testMyStackedRegressorWtLM <- function(data){
+testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){
+    printf <- function(...) cat(sprintf(...))
     data <- getFinalFeatures(data)
     
-    baseModels <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
-    metaModel <- getSimpleLinearModel
+    theMagic4 <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    metaModel <- metaModelConstructor
+    variants <- c("A", "B")
+    nIterations <- 1
 
+    for (var in variants){
+        printf("[Info] Testing variant %s\n", var)
+        stackedFormula <- list(baseModelList = theMagic4, 
+                               metaModel = metaModel, 
+                               variant = var)
+        res <- iterateCrossValidationNTimes(getStackedRegressor, data, nIterations, TRUE, stackedFormula)
+    }
+    res
+}
+
+testMyStackedRegressorWtLM <- function(data){
+    res <- testStackedRegressorWt4BaseModels(data, getSimpleLinearModel)
+    res
 }
 
 testMyStackedRegressorWtSVM <- function(data){
-   print("Working in progress...") 
+    res <- testStackedRegressorWt4BaseModels(data, getSVM)
+    res
 }
