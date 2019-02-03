@@ -57,6 +57,50 @@ bootstrap <- function(data, totBathRms=T, carsXarea=T, recentGarage=F, totalSF=T
     data <- removeMulticollinearFeatures(data)
 }
 
+makeFinalPredictions <- function(){
+    print("Cleaning dataset...")
+    fullData <- getFinalFeatures(fullData)
+    
+    print("Training the optimal ensemble model...")
+    # optimal ensemble model
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
+    weights <- c(0.5, 0.5, 3.5, 5)
+    
+    ensemble <- createEnsembleModel(models, weights, fullData)
+    ensemblePreds <- ensemblePredict(ensemble, fullData)
+    
+    print("Training XGB model...")
+    # XGB
+    xgb <- getXGBModel(fullData)
+    xgbPreds <- predictSalePrices(xgb, fullData)
+    
+    print("Training SVM model...")
+    # SVM
+    svm <- getSVM(fullData)
+    svmPreds <- predictSalePrices(svm, fullData)
+    
+    # Stacked regressors
+    recipe <- list(getLassoModel, getRidgeModel, getXGBModel, getSVM)
+    
+    print("Training stacked regressor, variant A...")
+    stackedA <- getStackedRegressor(fullData, recipe, getXGBModel, variant = "A")
+    stackPredsA <- stackedA$predictions
+    
+    print("Training stacked regressor, variant B...")
+    stackedB <- getStackedRegressor(fullData, recipe, getXGBModel, variant = "B")
+    stackPredsB <- stackedB$predictions
+    
+    print("Averaging predictions...")
+    # final predictions
+    preds <- (2*ensemblePreds + xgbPreds + svmPreds + stackPredsA + stackPredsB)/6
+    
+    print("Writing CSV...")
+    # write CSV
+    savePredictionsOnFile(testIDs, preds, "out/final_predictions.csv")
+    
+    print("Done.")
+}
+
 # NOT USEFUL ANYMORE
 testCorrectnessRefactoring <- function(data){
     # Clean features
@@ -242,7 +286,8 @@ testOptimalWeightsMinimum <- function(data){
 
     ensemble <- createEnsembleModel(models, weights, data)
     pred <- ensemblePredict(ensemble, data)
-    savePredictionsOnFile(testIDs, pred, "out/2019_02_02_4models_min_optimal_weights.csv")
+    #savePredictionsOnFile(testIDs, pred, "out/2019_02_02_4models_min_optimal_weights.csv")
+    pred
 }
 
 testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){

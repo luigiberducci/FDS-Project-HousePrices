@@ -198,12 +198,13 @@ getTestData <- function(data, scaled = F){
 #
 # Parameters:
 # ===========
-#   -`data`:    complete dataset (train + test sets)
+#   -`data`:        complete dataset (train + test sets)
+#   -`isMetaModel`: true if this model has to be used as a meta-model in a stacked regressor
 #
 # Return:
 # =======
 #   -`model`: a trained model
-getSimpleLinearModel <- function(data){
+getSimpleLinearModel <- function(data, isMetaModel=F){
     set.seed(12345)
     train <- getTrainData(data)
     model <- lm(SalePrice ~ ., data=train)
