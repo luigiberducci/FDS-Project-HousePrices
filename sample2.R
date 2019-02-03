@@ -10,7 +10,7 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(reshape2)
-library(Boruta)
+library(Boruta) # NOT USEFUL ANYMORE
 library(corrplot)
 library(scales)
 library(Rmisc)
@@ -18,7 +18,7 @@ library(ggrepel)
 library(psych)
 library(xgboost)
 library(caret)
-library(neuralnet)
+library(neuralnet) # NOT USEFUL ANYMORE
 
 source("featureEngineering.R")
 source("modelTesting.R")
@@ -57,6 +57,7 @@ bootstrap <- function(data, totBathRms=T, carsXarea=T, recentGarage=F, totalSF=T
     data <- removeMulticollinearFeatures(data)
 }
 
+# NOT USEFUL ANYMORE
 testCorrectnessRefactoring <- function(data){
     # Clean features
     data <- bootstrap(data)
@@ -68,10 +69,11 @@ testCorrectnessRefactoring <- function(data){
     savePredictionsOnFile(testIDs, pred, "out/2019_02_01_1feat.csv")
 }
 
+# NOT USEFUL ANYMORE
 test <- function(data){
     lasso <- getLassoModel(data)
     ridge <- getRidgeModel(data)
-    xgb   <- getGradientBoostingModel(data)
+    xgb   <- getXGBModel(data)
     svm   <- getSVM(data)
     
     predictionsLasso <- predictSalePrices(lasso, data)
@@ -83,32 +85,33 @@ test <- function(data){
     res
 }
 
-
+# NOT USEFUL ANYMORE
 testCVonEnsemble <- function(data){
     data <- bootstrap(data)
     data <- importanceSelection(data, getLassoModel)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel)
     weights <- c(2, 1.5, 1.5)
 
     result <- iterateCrossValidationEnsembleModel(models, weights, data, 10)
     result
 }
 
+# NOT USEFUL ANYMORE
 testConsistencyEnsemble <- function(data){
     data <- bootstrap(data)
     data <- importanceSelection(data, getLassoModel)
 
     lasso <- getLassoModel(data)
     ridge <- getRidgeModel(data)
-    xgb   <- getGradientBoostingModel(data)
+    xgb   <- getXGBModel(data)
     predictionsLasso <- predictSalePrices(lasso, data)
     predictionsRidge <- predictSalePrices(ridge, data)
     predictionsXGB   <- predictSalePrices(xgb, data)
 
     manualRes <- (2*predictionsLasso + 1.5*predictionsRidge + 1.5*predictionsXGB)/5
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel)
     weights <- c(2, 1.5, 1.5)
     ensemble <- createEnsembleModel(models, weights, data)
     ensembleRes <- ensemblePredict(ensemble, data)
@@ -117,33 +120,36 @@ testConsistencyEnsemble <- function(data){
     result
 }
 
+# NOT USEFUL ANYMORE
 compareNewFeatures3 <- function(data){
     # By default, there is a new feature "totalSF"  
     data3 <- bootstrap(data, recentGarage=T)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(2, 1.5, 1.5, 2)
 
     cv3 <- iterateCrossValidationEnsembleModel(models, weights, data3, 5)
     cv3
 }
 
+# NOT USEFUL ANYMORE
 compareNewFeatures2 <- function(data){
     # By default, there is a new feature "totalSF"  
     data2 <- bootstrap(data, carsXarea=T)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(2, 1.5, 1.5, 2)
 
     cv2 <- iterateCrossValidationEnsembleModel(models, weights, data2, 5)
     cv2
 }
 
+# NOT USEFUL ANYMORE
 compareNewFeatures1 <- function(data){
     # By default, there is a new feature "totalSF"  
     data1 <- bootstrap(data, totBathRms=T)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(2, 1.5, 1.5, 2)
 
     cv1 <- iterateCrossValidationEnsembleModel(models, weights, data1, 5)
@@ -162,7 +168,7 @@ testEnsembleWeights <- function(data){
     data <- importanceSelection(data, getLassoModel)
     data <- getTrainData(data)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(1, 1, 1, 1)
    
 
@@ -209,7 +215,7 @@ test5models <- function(data){
     data <- bootstrap(data, totBathRms=T, carsXarea=T, totalSF=T)
     data <- importanceSelection(data, getLassoModel)
 
-    models <- c(getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getENModel, getXGBModel, getSVM)
     weights <- c(5, 5, 5, 5, 5)
 
     ensemble <- createEnsembleModel(models, weights, data)
@@ -218,10 +224,9 @@ test5models <- function(data){
 }
 
 testOptimalWeightsAverage <- function(data){
-    data <- bootstrap(data, totBathRms=T, carsXarea=T, totalSF=T)
-    data <- importanceSelection(data, getLassoModel)
+    data <- getFinalFeatures(data)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(2.6, 1.7, 3.35, 2.25)
 
     ensemble <- createEnsembleModel(models, weights, data)
@@ -230,10 +235,9 @@ testOptimalWeightsAverage <- function(data){
 }
 
 testOptimalWeightsMinimum <- function(data){
-    data <- bootstrap(data, totBathRms=T, carsXarea=T, totalSF=T)
-    data <- importanceSelection(data, getLassoModel)
+    data <- getFinalFeatures(data)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(0.5, 0.5, 3.5, 5)
 
     ensemble <- createEnsembleModel(models, weights, data)
@@ -245,7 +249,7 @@ testStackedRegressorWt4BaseModels <- function(data, metaModelConstructor){
     printf <- function(...) cat(sprintf(...))
     data <- getFinalFeatures(data)
     
-    theMagic4 <- list(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    theMagic4 <- list(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     metaModel <- metaModelConstructor
     variants <- c("A", "B")
     nIterations <- 4
@@ -279,6 +283,6 @@ testMyStackedRegressorWtRidge <- function(data){
 }
 
 testMyStackedRegressorWtXGB <- function(data){
-    res <- testStackedRegressorWt4BaseModels(data, getGradientBoostingModel)
+    res <- testStackedRegressorWt4BaseModels(data, getXGBModel)
     res
 }

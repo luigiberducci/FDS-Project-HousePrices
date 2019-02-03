@@ -2,31 +2,29 @@
 # Date:     January 2019
 # Purpose:  Library for locally testing models without submitting to the House Prices competition from Kaggle
 
-library(MASS)
-library(e1071)
+library(MASS) # to be moved in sample2.R
+library(e1071) # to be moved in sample2.R
 
+# Performs cross-validation and returns performance stats
+#
+# Parameters:
+# ===========
+#   -`modelConstructor`:    model constructor of the model to test
+#   -`data`:                complete dataset (train + test sets)
+#   -`nTimes`:              iterations of CV to perform
+#   -`stackedModel`:        true if the model to test is a stacked model
+#   -`recipe`:              recipe to pass down the stacked model's constructor
+#
+# Return:
+# =======
+#   -`finalRes`: dataframe containing performance stats per CV iteration
 iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, stackedModel = F, recipe = NULL){
-    #compute max and min SalePrice to scale back NN's predictions
-    # maxPrice <- 0
-    # minPrice <- 0
-    # if(neuralModel == T){
-    #     maxPrice = max(data$SalePrice, na.rm = T)
-    #     minPrice = min(data$SalePrice, na.rm = T)
-    # }
     
     # Work only on train data
     allTrain <- getTrainData(data, scaled = F)
     
     #create partitions for cross validation (avoiding the same splitting due to set.seed)
-    sets <- list()
-    for(i in 1:nTimes){
-        # Split in train/test data
-        trainSamples <- allTrain$SalePrice %>% createDataPartition(p=0.8, list=FALSE)
-        trainData <- allTrain[trainSamples, ]
-        testData  <- allTrain[-trainSamples, ]
-        
-        sets[[i]] <- list(trainData = trainData, testData = testData)
-    }
+    sets <- getKDataPartitions(data, nTimes)
     
     finalRes <- data.frame()
     
@@ -50,6 +48,19 @@ iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, stacked
     finalRes
 }
 
+# Performs a single step of cross-validation and returns performance stats
+#
+# Parameters:
+# ===========
+#   -`model`:           model to test
+#   -`data`:            test set
+#   -`stackedModel`:    true if the model to test is a stacked model
+#   -`recipe`:          recipe to pass down the stacked model's constructor
+#   -`completeData`:    complete dataset (train + test sets)
+#
+# Return:
+# =======
+#   -`res`: dataframe containing performance stats
 crossValidation <- function(model, data, stackedModel = F, recipe = NULL, completeData = NULL){
     # Save the groundtruth to future comparison
     groundTruth <- data$SalePrice
@@ -85,11 +96,29 @@ crossValidation <- function(model, data, stackedModel = F, recipe = NULL, comple
     res
 }
 
+# Writes predictions to a Kaggle-compliant CSV file
+#
+# Parameters:
+# ===========
+#   -`ids`:         IDs of test set entries
+#   -`pred`:        predictions of test set SalePrice values
+#   -`outputPath`:  string containing a path to write the file to (comprehensive file extension)
 savePredictionsOnFile <- function(ids, pred, outputPath){
     predictionDF <- data.frame(Id = ids, SalePrice = pred)
     write.csv(predictionDF, file = outputPath, row.names = FALSE)
 }
 
+# Performs predictions of test set SalePrice values
+#
+# Parameters:
+# ===========
+#   -`model`:       model to use for predictions (compatible with caret train)
+#   -`data`:        complete dataset (train + test sets)
+#   -`checkSkew`:   true if SalePrice values have been processed with log1p
+#
+# Return:
+# =======
+#   -`predictions`: result of caret predict function
 predictSalePrices <- function(model, data, checkSkew = T){
     test <- getTestData(data)
     test$SalePrice <- NULL
@@ -118,6 +147,7 @@ predictNeuralSalePrices <- function(model, data, checkSkew = T, isDataScaled = F
     predictions
 }
 
+# possibly DEPRECATED - NNs were the only using this
 #scales data in the [0,1] range to help the neural network perform better
 scaleData <- function(data){
     maxVals <- apply(data, 2, max, na.rm = T)
@@ -126,6 +156,16 @@ scaleData <- function(data){
     data
 }
 
+# Given a complete dataset, returns the training set only
+#
+# Parameters:
+# ===========
+#   -`data`:    complete dataset (train + test sets)
+#   -`scaled`:  true if values have to be scaled in the [0,1] range
+#
+# Return:
+# =======
+#   -`train`: returns the portion of the dataset with has actual values for SalePrice
 getTrainData <- function(data, scaled = F){
     if(scaled == T)
         data <- scaleData(data)
@@ -134,6 +174,16 @@ getTrainData <- function(data, scaled = F){
     train
 }
 
+# Given a complete dataset, returns the test set only
+#
+# Parameters:
+# ===========
+#   -`data`:    complete dataset (train + test sets)
+#   -`scaled`:  true if values have to be scaled in the [0,1] range
+#
+# Return:
+# =======
+#   -`test`: returns the portion of the dataset with has NA values for SalePrice
 getTestData <- function(data, scaled = F){
     if(scaled == T)
         data <- scaleData(data)
@@ -144,7 +194,15 @@ getTestData <- function(data, scaled = F){
 
 # Models
 
-#simple linear model
+# Returns a simple linear model using R's lm function
+#
+# Parameters:
+# ===========
+#   -`data`:    complete dataset (train + test sets)
+#
+# Return:
+# =======
+#   -`model`: a trained model
 getSimpleLinearModel <- function(data){
     set.seed(12345)
     train <- getTrainData(data)
@@ -153,6 +211,7 @@ getSimpleLinearModel <- function(data){
     model
 }
 
+# DEPRECATED
 # Linear model with feature selection using 'backward model selection'
 ############ DON'T RUN IT BECAUSE IT TAKES A LONG TIME ##############
 getLinearModelWithBackwardSelection <- function(data, AREYOUSURE=F){
@@ -197,28 +256,48 @@ getLinearModelWithBackwardSelection <- function(data, AREYOUSURE=F){
     backwardModel
 }
 
-getSVM <- function(data, metaModelTuning=F){
+# Returns a model based on Support Vector Machines
+#
+# Parameters:
+# ===========
+#   -`data`:        complete dataset (train + test sets)
+#   -`isMetaModel`: true if this model has to be used as a meta-model in a stacked regressor
+#
+# Return:
+# =======
+#   -`model`: a caret trained model
+getSVM <- function(data, isMetaModel=F){
     set.seed(12345)
     # trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
     trctrl <- trainControl(method = "cv", number = 10)
     train <- getTrainData(data)
-    if(metaModelTuning)
+    if(isMetaModel)
         grid <- expand.grid(C=0.88) #TO DO TUNING HERE
     else
         grid <- expand.grid(C=0.88) #DEFAULT TUNING
-    model <- train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10, tuneGrid=grid)
+    model <- suppressWarnings(train(SalePrice ~ ., data=train, method="svmLinear", trControl=trctrl, preProces=c("center", "scale"), tuneLength=10, tuneGrid=grid))
+    
+    model
 }
 
-# --- Lasso ---
-
-getLassoModel <- function(data, metaModelTuning=F){
+# Returns a model based on Lasso regression
+#
+# Parameters:
+# ===========
+#   -`data`:        complete dataset (train + test sets)
+#   -`isMetaModel`: true if this model has to be used as a meta-model in a stacked regressor
+#
+# Return:
+# =======
+#   -`model`: a caret trained model
+getLassoModel <- function(data, isMetaModel=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    if(metaModelTuning)
+    if(isMetaModel)
         grid <- expand.grid(alpha = 1, lambda = 0.002) #TODO CHANGE TUNING HERE
     else
         grid <- expand.grid(alpha = 1, lambda = 0.0015)
@@ -227,16 +306,24 @@ getLassoModel <- function(data, metaModelTuning=F){
     model
 }
 
-# --- Ridge ---
-
-getRidgeModel <- function(data, metaModelTuning=F){
+# Returns a model based on Ridge regression
+#
+# Parameters:
+# ===========
+#   -`data`:        complete dataset (train + test sets)
+#   -`isMetaModel`: true if this model has to be used as a meta-model in a stacked regressor
+#
+# Return:
+# =======
+#   -`model`: a caret trained model
+getRidgeModel <- function(data, isMetaModel=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    if(metaModelTuning)
+    if(isMetaModel)
         grid <- expand.grid(alpha = 0, lambda = 0.0375) #TODO CHANGE TUNING HERE
     else
         grid <- expand.grid(alpha = 0, lambda = 0.032)
@@ -245,16 +332,24 @@ getRidgeModel <- function(data, metaModelTuning=F){
     model
 }
 
-# --- Elastic Net ---
-
-getENModel <- function(data, metaModelTuning=F){
+# Returns a model based on Elastic Net regression
+#
+# Parameters:
+# ===========
+#   -`data`:        complete dataset (train + test sets)
+#   -`isMetaModel`: true if this model has to be used as a meta-model in a stacked regressor
+#
+# Return:
+# =======
+#   -`model`: a caret trained model
+getENModel <- function(data, isMetaModel=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 25)
-    if(metaModelTuning)
+    if(isMetaModel)
         grid <- expand.grid(alpha = 0.5, lambda = 0.0035) #TODO CHANGE TUNING HERE
     else
         grid <- expand.grid(alpha = 0.5, lambda = 0.0015)
@@ -279,16 +374,24 @@ getNeuralModel <- function(data){
     model
 }
 
-# --- Extreme Gradient Boosting (XGB) ---
-
-getGradientBoostingModel <- function(data, metaModelTuning=F){
+# Returns a model based on Extreme Gradient Boosting
+#
+# Parameters:
+# ===========
+#   -`data`:        complete dataset (train + test sets)
+#   -`isMetaModel`: true if this model has to be used as a meta-model in a stacked regressor
+#
+# Return:
+# =======
+#   -`model`: a caret trained model
+getXGBModel <- function(data, isMetaModel=F){
     set.seed(12345)
     train <- getTrainData(data)
     prices <- train$SalePrice
     train$SalePrice <- NULL
     
     control <- trainControl(method="cv", number = 10)
-    if(metaModelTuning)
+    if(isMetaModel)
         grid <- expand.grid(nrounds = 200, # c(100,200,300),
                         max_depth = 3, #c(3:7),
                         eta = 0.05, #seq(0.01, 1),
@@ -312,7 +415,17 @@ getGradientBoostingModel <- function(data, metaModelTuning=F){
 
 # --- Custom ensemble models go here ---
 
-# modelList is a list of model constructors; weights is an array to perform a weighted average of the predictions
+# Returns a custom ensemble model based on a weighted averaging technique
+#
+# Parameters:
+# ===========
+#   -`modelList`:   list of model constructors to use as base models
+#   -`weights`:     list of weights to apply to each base model's predictions during the weighted average
+#   -`data`:        complete dataset (train + test sets)
+#
+# Return:
+# =======
+#   -`avgModel`: a custom ensemble model, containing each caret trained base models and the associated weights
 createEnsembleModel <- function(modelList, weights, data){
     n <- length(modelList)
     
@@ -333,7 +446,17 @@ createEnsembleModel <- function(modelList, weights, data){
     avgModel
 }
 
-# produces predictions for the ensemble model
+# Returns predictions performed by a custom ensemble model
+#
+# Parameters:
+# ===========
+#   -`ensembleModel`:   trained custom ensemble model
+#   -`data`:            complete dataset (train + test sets)
+#   -`checkSkew`:       true if SalePrice values have been processed with log1p
+#
+# Return:
+# =======
+#   -`avgPreds`: weighted average of each base model's predictions
 ensemblePredict <- function(ensembleModel, data, checkSkew=T){
     preds <- NULL
     totW <- 0
@@ -357,9 +480,10 @@ ensemblePredict <- function(ensembleModel, data, checkSkew=T){
 #
 # Parameters:
 # ===========
-#   -`multiModel`:  list of model constructor
-#   -`data`:        complete dataset used
-#   -`numIters`:    number of iterations
+#   -`multiModel`:      list of model constructor
+#   -`modelWeights`:    list of model weights
+#   -`data`:            complete dataset used
+#   -`numIters`:        number of iterations
 iterateCrossValidationEnsembleModel <- function(multiModel, modelWeights, data, numIters){
     data <- getTrainData(data)
 
@@ -451,7 +575,16 @@ testEnsembleModelOnPartitions <- function(ensembleList, partitions){
     finalRes
 }
 
-# splits data into k almost-equal sized parts and returns the indexes to perform data splitting as a list
+# Splits data in K folds, to be used in leave-one-out training
+#
+# Parameters:
+# ===========
+#   -`data`:    dataset to be split
+#   -`k`:       number of parts
+#
+# Return:
+# =======
+#   -`split`: list containing k elements, each specifying start and end indices to perform the splitting
 getKFolds <- function(data, k){
     n <- nrow(data)
     chunkSize <- as.integer(n/k) + 1
@@ -469,14 +602,18 @@ getKFolds <- function(data, k){
     split
 }
 
-# performs k-fold CV with k being the number of base models selected; the column-wise concatenation of each output will then be fed into the specified meta-model
-# the variant parameter is a factor with levels:
-#   - A: averages the test set predictions to build the meta-test set (default)
-#   - B: trains each base model on all folds and the meta-test set is built upon these models' predictions on the test set
-# returns a named list containing the following objects:
-#   - model = stacked model
-#   - predictions = predictions for the test set
-# baseModelList is a list of model constructors, and metaModel is a model constructor as well
+# Returns a custom model based on stacked regression
+#
+# Parameters:
+# ===========
+#   -`data`:            complete dataset (train + test sets)
+#   -`baseModelList`:   list of model constructors to use as base models (trained with leave-one-out technique)
+#   -`metaModel`:       model constructor to use as meta models
+#   -`variant`:         factor; levels: A (average partially-trained base models' predictions to feed the meta-model), B (feed fully-trained base models' predictions to the meta-model)
+#
+# Return:
+# =======
+#   -`ret`: a custom model, containing a caret trained meta-model and the actual predictions on the test set
 getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     n <- length(baseModelList)
     if(n <= 0)
