@@ -207,7 +207,7 @@ testEnsembleWeights <- function(data){
     print("Starting")
     print(Sys.time())
 
-    models <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    models <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getXGBModel, getSVM)
     weights <- c(1, 1, 1, 1, 1, 1)
 
     allWeights <- c(0, 0.25, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 4.5, 5)
@@ -302,7 +302,7 @@ testOptimalWeightsMinimum <- function(data){
 testOptimalWeightsMinimumMAE <- function(data){
     data <- getFinalFeatures(data)
 
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(1.5, 0.5, 3.5, 4.5)
 
     ensemble <- createEnsembleModel(models, weights, data)
@@ -348,31 +348,31 @@ testStackedRegressor<- function(data, metaModelConstructor, baseModelList, nIter
 }
 
 testStackedRegressorWt2BaseModels<- function(data, metaModel){
-    dynamicDuo <- list(getLassoModel, getGradientBoostingModel)
+    dynamicDuo <- list(getLassoModel, getXGBModel)
     res <- testStackedRegressor(data, metaModel, dynamicDuo)
     res
 }
 
 testStackedRegressorWt3BaseModels<- function(data, metaModel){
-    fantasticTrio <- list(getLassoModel, getRidgeModel, getGradientBoostingModel)
+    fantasticTrio <- list(getLassoModel, getRidgeModel, getXGBModel)
     res <- testStackedRegressor(data, metaModel, fantasticTrio)
     res
 }
 
 testStackedRegressorWt4BaseModels <- function(data, metaModel){
-    theMagic4 <- list(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    theMagic4 <- list(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     res <- testStackedRegressor(data, metaModel, theMagic4)
     res
 }
 
 testStackedRegressorWt5BaseModels <- function(data, metaModel){
-    theBest5 <- list(getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    theBest5 <- list(getLassoModel, getRidgeModel, getENModel, getXGBModel, getSVM)
     res <- testStackedRegressor(data, metaModel, theBest5)
     res
 }
 
 testStackedRegressorWt6BaseModels <- function(data, metaModel){
-    allOurPower <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    allOurPower <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getXGBModel, getSVM)
     res <- testStackedRegressor(data, metaModel, allOurPower)
     res
 }
@@ -471,13 +471,13 @@ testNastedEnsemble <- function(data){
     data <- getFinalFeatures(data)
    
     # Ensemble
-    models <- c(getLassoModel, getRidgeModel, getGradientBoostingModel, getSVM)
+    models <- c(getLassoModel, getRidgeModel, getXGBModel, getSVM)
     weights <- c(0.5, 0.5, 3.5, 5)
     ensemble <- createEnsembleModel(models, weights, data)
     ensemblePred <- ensemblePredict(ensemble, data)
    
     # Stacked
-    models <- c(getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel)
+    models <- c(getLassoModel, getRidgeModel, getENModel, getXGBModel)
     metamodel <- getSVM
     stacked <- getStackedRegressor(data, models, metamodel, "A")
     stackedPred <- stacked$predictions
@@ -489,7 +489,7 @@ testNastedEnsemble <- function(data){
 testStackedWithEN <- function(data){
     data <- getFinalFeatures(data)
 
-    models <- c(getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel)
+    models <- c(getLassoModel, getRidgeModel, getENModel, getXGBModel)
     metamodel <- getSVM
     stacked <- getStackedRegressor(data, models, metamodel, "A")
     stackedPred <- stacked$predictions
@@ -499,7 +499,7 @@ testStackedWithEN <- function(data){
 
 testBestStackedRegressor <- function(data){
     data <- getFinalFeatures(data)
-    allOurPower <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    allOurPower <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getXGBModel, getSVM)
     metamodel <- getSVM
     stacked <- getStackedRegressor(data, allOurPower, metamodel, "A")
     stackedPred <- stacked$predictions
@@ -508,7 +508,7 @@ testBestStackedRegressor <- function(data){
 }
 
 theLastAttempt <- function(data){
-    allOurPower <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getGradientBoostingModel, getSVM)
+    allOurPower <- list(getSimpleLinearModel, getLassoModel, getRidgeModel, getENModel, getXGBModel, getSVM)
     
     ensemble <- createEnsembleModel(models, weights, data)
 }
