@@ -24,7 +24,7 @@ iterateCrossValidationNTimes <- function(modelConstructor, data, nTimes, stacked
     allTrain <- getTrainData(data, scaled = F)
     
     #create partitions for cross validation (avoiding the same splitting due to set.seed)
-    sets <- getKDataPartitions(data, nTimes)
+    sets <- getKDataPartitions(allTrain, nTimes)
     
     finalRes <- data.frame()
     
