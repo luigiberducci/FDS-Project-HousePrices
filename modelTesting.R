@@ -461,6 +461,8 @@ createEnsembleModel <- function(modelList, weights, data){
 ensemblePredict <- function(ensembleModel, data, checkSkew=T){
     preds <- NULL
     totW <- 0
+    epsilon <- 0.000000001    # To avoid Div by 0
+
     for(i in 1:length(ensembleModel$models)){
         p <- predictSalePrices(ensembleModel$models[[i]], data, checkSkew)
         w <- ensembleModel$weights[[i]]
@@ -473,7 +475,7 @@ ensemblePredict <- function(ensembleModel, data, checkSkew=T){
             preds <- cbind(preds, p)
     }
     
-    avgPreds <- rowSums(preds) / totW
+    avgPreds <- rowSums(preds) / (totW+epsilon)
     avgPreds
 }
 
@@ -624,7 +626,10 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     variant <- factor(variant, levels = c("A", "B"))
     if(is.na(variant))
         stop("Unknown variant value. Accepted variants are: A, B")
-    
+   
+    #Debug
+    print("[Debug] Start stacked regressor")
+
     # split training data into n folds
     train <- getTrainData(data)
     trainFolds <- getKFolds(train, n)
@@ -642,7 +647,9 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     
     # perform leave-one-out training of base models
     for(i in 1:n){ # selects the heldout set
-        
+        #Debug
+        print("[Debug] Iteration on K Fold")
+
         # current training set is the whole training set except the heldout set
         currTrain <- NULL
         for(j in 1:n){
@@ -668,7 +675,12 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
         # train the base models, store predictions for the heldout set in order to produce the meta-training set
         # store base models' predictions on the test set to later use them as meta-test set
         for(j in 1:n){ # selects the base model
+            # Debug
+            print("[Debug] Iteration on base model")
+            # baseModel <- suppressWarnings(baseModelList[[j]](currTrain))
             baseModel <- baseModelList[[j]](currTrain)
+
+            print("[Debug] predict current fold with base model")
             trainPredictions <- predict(baseModel, currTest)
             
             testPredictions <- NULL
@@ -707,7 +719,10 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
             }
         }
     }
-    
+   
+    #Debug 
+    print("[Debug] Collect base models' predictions")
+
     switch(as.character(variant),
            "A" = {
                # variant A averages each base model's predictions in order to get that models' entry in the meta-test set
@@ -733,6 +748,7 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
            "B" = {
                #variant B trains each base model on the full training set and uses these new predictions as their entries in the meta-test set
                for(i in 1:n){ # selects the base model
+                   # baseModel <- suppressWarnings(baseModelList[[i]](train))
                    baseModel <- baseModelList[[i]](train)
                    predictions <- predictSalePrices(baseModel, test, checkSkew = F)
                    
@@ -783,8 +799,11 @@ getStackedRegressor <- function(data, baseModelList, metaModel, variant = "A"){
     colnames(metaTest) <- columns
     metaTest <- as.data.frame(sapply(metaTest, as.numeric))
 
+    #Debug 
+    print("[Debug] Train the metamodel")
+
     # build the meta-model and train it on its meta-training set
-    model <- metaModel(metaTrain, T)
+    model <- metaModel(metaTrain, isMetaModel=T)
 
     # performs predictions on the meta-test set
     predictions <- predictSalePrices(model, metaTest)

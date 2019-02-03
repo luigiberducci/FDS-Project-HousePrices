@@ -595,19 +595,19 @@ addFeatureCarsXArea <- function(data) {
   data
 }
 
-addFeatureRecentType <- function(data) {
-    prices <- data$SalePrice
-    data$SalePrice <- NULL
-    if(data$RecentGarage==NULL){
-        data <- addFeatureRecentGarage(data)
-        data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
-        data$RecentGarage<-NULL
-    } else {
-        data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
-    }
-  data$SalePrice <- prices
-  data
-}
+# addFeatureRecentType <- function(data) {
+#     prices <- data$SalePrice
+#     data$SalePrice <- NULL
+#     if(data$RecentGarage==NULL){
+#         data <- addFeatureRecentGarage(data)
+#         data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
+#         data$RecentGarage<-NULL
+#     } else {
+#         data$GarageRecentType <- ifelse(data$GarageType==1 & data$RecentGarage==1, 1, 0)
+#     }
+#   data$SalePrice <- prices
+#   data
+# }
 
 addFeatureTotalSF <- function(data) {
   prices <- data$SalePrice
