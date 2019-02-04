@@ -17,6 +17,7 @@ import xgboost as xgb
 R = robjects.r
 R.source("sample2.R")
 fullData = pandas2ri.ri2py_dataframe(R['fullData'])
+testIDs = np.arange(1461, 2920)
 
 def main():
     data = getFinalFeatures()
@@ -32,7 +33,21 @@ def main():
     predSVM   = predictSalePrices(svm, data)
     predEnsemble = predictEnsemble(ensemble, data)
 
+    savePredictionsOnFile(testIDs, predLasso,   "out/2019_02_04_LASSO.csv")
+    savePredictionsOnFile(testIDs, predRidge,   "out/2019_02_04_RIDGE.csv")
+    savePredictionsOnFile(testIDs, predXGB,     "out/2019_02_04_XGB.csv")
+    savePredictionsOnFile(testIDs, predSVM,     "out/2019_02_04_SVM.csv")
+    savePredictionsOnFile(testIDs, predEnsemble,"out/2019_02_04_ENSEMBLE.csv")
+
     return(predLasso, predRidge, predXGB, predSVM, predEnsemble)
+
+def savePredictionsOnFile(testIDs, pred, outFile):
+    df = pd.DataFrame()
+    df['Id'] = testIDs
+    df['SalePrice'] = pred
+    outputContent = df.to_csv(index=False)
+    with open(outFile, 'w') as out:
+        out.write(outputContent)
 
 def predictSalePrices(model, data):
     data = getTestData(data)
