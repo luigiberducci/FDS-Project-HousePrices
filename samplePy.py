@@ -232,9 +232,9 @@ def tuneSVM(data):
     printResultOfCVTuning(res)
 
 def tuneXGB(data):
-    nrounds = 750
-    min_child_weight = 2
-    gamma = 0.01
+    nrounds = [750]
+    min_child_weight = [2]
+    gamma = [0.01]
     etas = [0.01,0.005,0.001]
     max_depths = [4,6,8]
     colsample_bytrees = [0,1,10]
