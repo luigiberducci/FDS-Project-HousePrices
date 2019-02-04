@@ -5,6 +5,7 @@
 #
 
 # Libraries
+import os
 import numpy as np
 import pandas as pd
 import rpy2.robjects as robjects
@@ -12,34 +13,55 @@ from rpy2.robjects import pandas2ri
 from sklearn import svm
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import LassoCV
+from mlxtend.regressor import StackingRegressor
 import xgboost as xgb
+from sklearn.model_selection import GridSearchCV
 
+# Import feature tidying by the R implementation
 R = robjects.r
 R.source("sample2.R")
 fullData = pandas2ri.ri2py_dataframe(R['fullData'])
 testIDs = np.arange(1461, 2920)
 
+# Train simple models, ensemble and stacked. Save their prediction on files.
 def main():
     data = getFinalFeatures()
-    lasso = getLassoModel(data)
-    ridge = getRidgeModel(data)
-    xgb = getXGBModel(data)
-    svm = getSVM(data)
-    ensemble = getEnsemble(data)
 
-    predLasso = predictSalePrices(lasso, data)
-    predRidge = predictSalePrices(ridge, data)
-    predXGB   = predictSalePrices(xgb, data)
-    predSVM   = predictSalePrices(svm, data)
+    lasso = getTrainedLasso(data)
+    ridge = getTrainedRidge(data)
+    xgb = getTrainedXGB(data)
+    svm = getTrainedSVM(data)
+    ensemble = getTrainedEnsemble(data)
+    stacked  = getTrainedStacked(data)
+
+    predLasso    = predictSalePrices(lasso, data)
+    predRidge    = predictSalePrices(ridge, data)
+    predXGB      = predictSalePrices(xgb, data)
+    predSVM      = predictSalePrices(svm, data)
+    predStacked  = predictSalePrices(stacked, data)
     predEnsemble = predictEnsemble(ensemble, data)
 
-    savePredictionsOnFile(testIDs, predLasso,   "out/2019_02_04_LASSO.csv")
-    savePredictionsOnFile(testIDs, predRidge,   "out/2019_02_04_RIDGE.csv")
-    savePredictionsOnFile(testIDs, predXGB,     "out/2019_02_04_XGB.csv")
-    savePredictionsOnFile(testIDs, predSVM,     "out/2019_02_04_SVM.csv")
-    savePredictionsOnFile(testIDs, predEnsemble,"out/2019_02_04_ENSEMBLE.csv")
+    savePredictionsOnFile(testIDs, predLasso,   createOutFilepath("Lasso"))
+    savePredictionsOnFile(testIDs, predRidge,   createOutFilepath("Ridge"))
+    savePredictionsOnFile(testIDs, predXGB,     createOutFilepath("XGB"))
+    savePredictionsOnFile(testIDs, predSVM,     createOutFilepath("SVM"))
+    savePredictionsOnFile(testIDs, predEnsemble,createOutFilepath("Ensemble"))
+    savePredictionsOnFile(testIDs, predStacked, createOutFilepath("Stacked"))
 
-    return(predLasso, predRidge, predXGB, predSVM, predEnsemble)
+    predictions = (predLasso, predRidge, predXGB, predSVM, predEnsemble, predStacked)
+    models = (lasso, ridge, xgb, svm, ensemble, stacked)
+    return models
+
+# OUTPUT WRITING
+# The functions below are used to handle the output.
+def createOutFilepath(modelName):
+    prefix = "2019_02_04_tuned_"
+    outDir = "out"
+    extens = "csv"
+    name = prefix + modelName.upper() + "." + extens
+    return os.path.join(outDir, name)
 
 def savePredictionsOnFile(testIDs, pred, outFile):
     df = pd.DataFrame()
@@ -49,12 +71,12 @@ def savePredictionsOnFile(testIDs, pred, outFile):
     with open(outFile, 'w') as out:
         out.write(outputContent)
 
-def predictSalePrices(model, data):
-    data = getTestData(data)
-    data = data.iloc[:, :-1]
-    pred = model.predict(data)
-    return np.expm1(pred)
-
+# DATA HANDLING
+# The functions below are used to handle data.
+# For instance:
+#   1) there is a function to extract the final features (cleaned and selected),
+#   2) there are functions which return train dat or test data
+#   3) there is also a function to the dataset splitted into predictors and prices.
 def getFinalFeatures():
     data = R['fullData']
     data = R.getFinalFeatures(data)
@@ -73,48 +95,88 @@ def getPredictorsAndPrices(data):
     prices  = data['SalePrice']
     return (predictors, prices)
 
-def getSVM(data):
+# TRAINED MODELS
+# The functions below return the trained models used in the final ensemble.
+def getTrainedSVM(data):
     np.random.seed(1234)
     data = getTrainData(data)
     (predictors, prices) = getPredictorsAndPrices(data)
-    model = svm.SVR()
+    model = getTunedSVM()
     model.fit(predictors, prices)
     return model
 
-def getLassoModel(data):
+def getTrainedLasso(data):
     np.random.seed(1234)
     data = getTrainData(data)
     (predictors, prices) = getPredictorsAndPrices(data)
-    model = Lasso(alpha=1)
+    model = getTunedLasso()
     model.fit(predictors, prices)
     return model
 
-def getRidgeModel(data):
+def getTrainedRidge(data):
     np.random.seed(1234)
     data = getTrainData(data)
     (predictors, prices) = getPredictorsAndPrices(data)
-    model = Ridge(alpha=0.0)
+    model = getTunedRidge()
     model.fit(predictors, prices)
     return model
 
-def getXGBModel(data):
+def getTrainedXGB(data):
     np.random.seed(1234)
     data = getTrainData(data)
     (predictors, prices) = getPredictorsAndPrices(data)
-    model = xgb.XGBRegressor(objective ='reg:linear', colsample_bytree = 0.75, max_depth = 3)
+    model = getTunedXGB()
     model.fit(predictors, prices)
     return model
 
-def getEnsemble(data):
-    lasso = getLassoModel(data)
-    ridge = getRidgeModel(data)
-    xgb = getXGBModel(data)
-    svm = getSVM(data)
+def getTrainedStacked(data):
+    np.random.seed(1234)
+    data = getTrainData(data)
+    (predictors, prices) = getPredictorsAndPrices(data)
+    lasso = getTunedLasso()
+    ridge = getTunedRidge()
+    XGB = getTunedXGB()
+    SVM = getTunedSVM()
+    metaModel = svm.SVR(kernel='rbf')
 
-    ensemble = (lasso, ridge, xgb, svm)
+    stacked = StackingRegressor(regressors=[lasso, ridge, XGB, SVM],
+                                meta_regressor=metaModel)
+    stacked.fit(predictors, prices)
+    return stacked
+
+def getTrainedEnsemble(data):
+    lasso = getTrainedLasso(data)
+    ridge = getTrainedRidge(data)
+    XGB   = getTrainedXGB(data)
+    SVM   = getTrainedSVM(data)
+
+    ensemble = (lasso, ridge, XGB, SVM)
     weights  = (0.5, 0.5, 3.5, 5)
     return (ensemble, weights)
 
+# PREDICTIONS
+# The functions below are used to predict sale price.
+# Basically, there are 2 main function "predictSalePrices" and "predictEnsemble".
+
+# Given a model, use it to predict SalePrice.
+#
+# Parameters:
+# ===========
+#   -`model`:   trained model built by sklearn
+#   -`data`:    full dataset (train+test) composed only by cleaned features
+def predictSalePrices(model, data):
+    data = getTestData(data)
+    data = data.iloc[:, :-1]
+    pred = model.predict(data)
+    return np.expm1(pred)
+
+# Given an ensemble model, use it to predict SalePrice.
+#
+# Parameters:
+# ===========
+#   -`ensemble`: ensemble model built using "getTrainedEnsemble" composed of
+#                a list of trained base `models` and a list of `weights`
+#   -`data`:     full dataset (train+test) composed only by cleaned features
 def predictEnsemble(ensemble, data):
     models, weights = ensemble
     allPred   = getDFofIndividualPredictions(models, data)
@@ -136,7 +198,51 @@ def mergeIndividualPredictionWtWeights(pred, weights):
         finalPred += w*predAsArray
     return finalPred
 
+# DEFINITIVE TUNED BASE MODELS
+# The functions below return the tuned models.
+# Such models are NOT trained, they are just configured according to the best parameters.
+def getTunedLasso():
+    return Lasso(alpha=0.0004)
+
+def getTunedRidge():
+    return Ridge(alpha=7.6, fit_intercept=True)
+
+def getTunedSVM():
+    return svm.SVR(C=15, gamma=1e-06)
+
+def getTunedXGB():
+    # return xgb.XGBRegressor(objective ='reg:linear', colsample_bytree = 0.75, max_depth = 3)
+    return xgb.XGBRegressor( colsample_bytree=0.4603, gamma=0.0468,
+                             learning_rate=0.05, max_depth=3,
+                             min_child_weight=1.7817, n_estimators=2200,
+                             reg_alpha=0.4640, reg_lambda=0.8571,
+                             subsample=0.5213, silent=1,
+                             random_state =7, nthread = -1)
+
+# TUNING TEST
+# The remaining functions are used to tuning the models, test their performance.
+# The are WILD script and we cannot ensure their maintainance.
+def tuneSVM(data):
+    Cs = [0.1, 1, 7.5, 10, 12.5, 15]
+    gammas = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1]
+    paramGrid = {'C': Cs, 'gamma' : gammas}
+    model = svm.SVR()
+    res = getTunedModel(model, paramGrid, data)
 
 
+    cv_results = res.cv_results_
+    for mean_score, params in zip(cv_results["mean_test_score"], cv_results["params"]):
+        print(params, mean_score)
+    print("\n")
+    print(res.best_params_)
+    return res
+
+def getTunedModel(model, paramGrid, data):
+    data = getTrainData(data)
+    nFolds = 10
+    search = GridSearchCV(model, paramGrid, cv=nFolds)
+    (predictors, prices) = getPredictorsAndPrices(data)
+    search.fit(predictors, prices)
+    return search
 
 
