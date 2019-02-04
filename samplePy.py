@@ -203,10 +203,10 @@ def mergeIndividualPredictionWtWeights(pred, weights):
 # Such models are NOT trained, they are just configured according to the best parameters.
 def getTunedLasso():
     # return Lasso(alpha=0.0004)
-    return Lasso(alpha=0.0004)
+    return Lasso(alpha=0.0002)
 
 def getTunedRidge():
-    return Ridge(alpha=7.6, fit_intercept=True)
+    return Ridge(alpha=2.0, fit_intercept=True)
 
 def getTunedSVM():
     return svm.SVR(C=15, gamma=1e-06)
