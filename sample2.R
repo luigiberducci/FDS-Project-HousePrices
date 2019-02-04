@@ -67,6 +67,46 @@ savePredictionsOnFile <- function(ids, pred, outputPath){
 }
 
 # Trains models, performs predictions and writes a Kaggle-compliant CSV file
+saveSinglePredictions <- function(){
+    print("Cleaning dataset...")
+    fullData <- getFinalFeatures(fullData)
+    
+    print("Training Lasso model...")
+    # Lasso
+    lasso <- getLassoModel(fullData)
+    lassoPreds <- predictSalePrices(lasso, fullData)
+    
+    print("Training Ridge model...")
+    # Ridge
+    ridge <- getRidgeModel(fullData)
+    ridgePreds <- predictSalePrices(ridge, fullData)
+    
+    print("Training XGB model...")
+    # XGB
+    xgb <- getXGBModel(fullData)
+    xgbPreds <- predictSalePrices(xgb, fullData)
+    
+    print("Training SVM model...")
+    # SVM
+    svm <- getSVM(fullData)
+    svmPreds <- predictSalePrices(svm, fullData)
+    
+    print("Ensembling predictions...")
+    # final predictions
+    preds <- (0.5*lassoPreds + 0.5*ridgePreds + 3.5*xgbPreds + 5*svmPreds)/9.5
+    
+    print("Writing CSV...")
+    # write CSV
+    savePredictionsOnFile(testIDs, lassoPreds,  "out/last_attempt_lasso.csv")
+    savePredictionsOnFile(testIDs, ridgePreds,  "out/last_attempt_ridge.csv")
+    savePredictionsOnFile(testIDs, xgbPreds,    "out/last_attempt_xgb.csv")
+    savePredictionsOnFile(testIDs, svmPreds,    "out/last_attempt_svm.csv")
+    savePredictionsOnFile(testIDs, preds,       "out/last_attempt_ensemble.csv")
+    
+    print("Done.")
+
+}
+
 makeFinalPredictions <- function(){
     print("Cleaning dataset...")
     fullData <- getFinalFeatures(fullData)
@@ -106,7 +146,7 @@ makeFinalPredictions <- function(){
     
     print("Writing CSV...")
     # write CSV
-    savePredictionsOnFile(testIDs, preds, "out/final_predictions.csv")
+    savePredictionsOnFile(testIDs, preds, "out/final_predictions_stolen.csv")
     
     print("Done.")
 }

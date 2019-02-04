@@ -23,6 +23,8 @@ from mlxtend.regressor import StackingRegressor
 import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
 from itertools import permutations
+from scipy.stats import skew
+from scipy.special import boxcox1p
 
 # Import feature tidying by the R implementation
 R = robjects.r
@@ -345,6 +347,26 @@ def printResultOfCVTuning(result):
     #     print(params, mean_score)
     print("\nBest parameters\n")
     print(result.best_params_)
+
+def StolenaDataTidying():
+    train = pd.read_csv('data/train.csv')
+    test = pd.read_csv('data/test.csv')
+
+    train = train[~((train['GrLivArea'] > 4000) & (train['SalePrice'] < 300000))]
+    all_data = pd.concat((train.loc[:,'MSSubClass':'SaleCondition'], test.loc[:,'MSSubClass':'SaleCondition']))
+
+    # drop some features to avoid multicollinearity
+    all_data.drop(['1stFlrSF', 'GarageArea', 'TotRmsAbvGrd'], axis=1, inplace=True)
+    train["SalePrice"] = np.log1p(train["SalePrice"])
+    numeric_feats = all_data.dtypes[all_data.dtypes != "object"].index
+    skewed_feats = train[numeric_feats].apply(lambda x: skew(x.dropna())) #compute skewness
+    skewed_feats = skewed_feats[skewed_feats > 0.65]
+    skewed_feats = skewed_feats.index
+    all_data[skewed_feats] = boxcox1p(all_data[skewed_feats], 0.15)
+    all_data = pd.get_dummies(all_data)
+    all_data = all_data.fillna(all_data.mean())
+    return all_data
+
 
 if __name__=="__main__":
     main()

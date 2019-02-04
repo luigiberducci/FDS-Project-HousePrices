@@ -50,6 +50,51 @@ getNotNumericalFields <- function(data){
 }
 
 # --- Data tidying ---
+bootstrapLast <- function(data){
+    data <- removeOutliers(data)
+    train <- getTrainData(data)
+    test <- getTestData(data)
+    prices <- data$SalePrice
+    data$SalePrice <- NULL
+    data <- removeColumns(data)
+    
+    train$SalePrice <- log1p(train$SalePrice)
+
+    numericFeats <- getNumericalFields(data)
+    numericTrain <- train[,numericFeats] 
+    rowWtAnyNA <- apply(numericTrain, 1, function(x){any(is.na(x))})
+    subsetTrain <- numericTrain[!rowWtAnyNA, ]
+    skewed_feats <- sapply(subsetTrain, skew)
+    skewed_feats <- skewed_feats[skewed_feats>0.64]
+    skewed_feats <- names(skewed_feats)
+    
+    boxcox1p <- function(x) { (((1+x)**0.15)-1)/0.15 }
+    data[, skewed_feats] <- lapply(data[, skewed_feats], boxcox1p)
+
+    charFields <- getCharFields(data)
+    factData <- sapply(data[charFields], as.factor)
+    numData <- getNumericalData(data)
+    data <- cbind(numData, factData)
+
+    factFields <- getFactorFields(data)
+    factData   <- getFactorData(data)
+   
+    for(f in factFields){
+        tmp <- as.data.frame(dummy(f, factData))
+        data <- cbind(data, tmp)
+    }
+
+    data <- data[, !names(data) %in% factFields]
+    data$SalePrice <- prices
+    data
+}
+
+removeColumns <- function(data){
+    # REMOVE ALSO GARAGE AREA !!!!!
+    toRemove <- c('X1stFlrSF', 'GarageArea', 'TotRmsAbvGrd')
+    data[, !names(data) %in% toRemove]
+}
+
 removeOutliers <- function(data){
     trainData <- getTrainData(data)
     testData <- getTestData(data)
