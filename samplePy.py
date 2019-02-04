@@ -202,6 +202,7 @@ def mergeIndividualPredictionWtWeights(pred, weights):
 # The functions below return the tuned models.
 # Such models are NOT trained, they are just configured according to the best parameters.
 def getTunedLasso():
+    # return Lasso(alpha=0.0004)
     return Lasso(alpha=0.0004)
 
 def getTunedRidge():
@@ -228,14 +229,22 @@ def tuneSVM(data):
     paramGrid = {'C': Cs, 'gamma' : gammas}
     model = svm.SVR()
     res = getTunedModel(model, paramGrid, data)
+    printResultOfCVTuning(res)
 
-
-    cv_results = res.cv_results_
-    for mean_score, params in zip(cv_results["mean_test_score"], cv_results["params"]):
-        print(params, mean_score)
-    print("\n")
-    print(res.best_params_)
-    return res
+def tuneXGB(data):
+    nrounds = 750
+    min_child_weight = 2
+    gamma = 0.01
+    etas = [0.01,0.005,0.001]
+    max_depths = [4,6,8]
+    colsample_bytrees = [0,1,10]
+    subsamples = [0,0.2,0.4,0.6]
+    paramGrid = {'nrounds': nrounds, 'min_child_weight': min_child_weight,
+                 'gamma' : gamma, 'eta':etas, 'max_depth': max_depths,
+                 'colsample_bytree':colsample_bytrees, 'subsample': subsamples}
+    model = xgb.XGBRegressor()
+    res = getTunedModel(model, paramGrid, data)
+    printResultOfCVTuning(res)
 
 def getTunedModel(model, paramGrid, data):
     data = getTrainData(data)
@@ -244,5 +253,13 @@ def getTunedModel(model, paramGrid, data):
     (predictors, prices) = getPredictorsAndPrices(data)
     search.fit(predictors, prices)
     return search
+
+def printResultOfCVTuning(result):
+    print("\nAll Iterations\n")
+    cv_results = result.cv_results_
+    for mean_score, params in zip(cv_results["mean_test_score"], cv_results["params"]):
+        print(params, mean_score)
+    print("\nBest parameters\n")
+    print(result.best_params_)
 
 
