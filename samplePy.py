@@ -15,9 +15,13 @@ from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import LassoCV
+from sklearn.metrics import mean_squared_error as rmse
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error as mae
 from mlxtend.regressor import StackingRegressor
 import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
+from itertools import permutations
 
 # Import feature tidying by the R implementation
 R = robjects.r
@@ -152,6 +156,16 @@ def getTrainedEnsemble(data):
 
     ensemble = (lasso, ridge, XGB, SVM)
     weights  = (0.5, 0.5, 3.5, 5)
+
+def getEnsemble(data, weights):
+    lasso = getTunedLasso(data)
+    ridge = getTunedRidge(data)
+    xgb = getTunedXGB(data)
+    svm = getTunedSVM(data)
+
+    ensemble = (lasso, ridge, xgb, svm)
+    #weights  = (0.5, 0.5, 3.5, 5)
+
     return (ensemble, weights)
 
 # PREDICTIONS
@@ -253,6 +267,48 @@ def getTunedModel(model, paramGrid, data):
     (predictors, prices) = getPredictorsAndPrices(data)
     search.fit(predictors, prices)
     return search
+
+def ensembleCV():
+    allWeights = [0, 0.25, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+    perms = permutations(allWeights)
+    permSize = len(perms)
+    iters = 1
+
+    data = getFinalFeatures()
+    partitions = R.getKDataPartitions(data, iters)
+
+    results = pd.DataFrame()
+    for i in range(0, iters):
+        cvTrain = pandas2ri.ri2py_dataframe(partitions[i][0])
+        cvTestFull = pandas2ri.ri2py_dataframe(partitions[i][1])
+
+        (cvTest, groundTruth) = getPredictorsAndPrices(cvTestFull)
+        minRMSE = np.inf
+        minWeights = None
+
+        for currWeights in perms:
+            (ensembleModel, _) = getEnsemble(cvTrain, currWeights)
+            ensemblePreds = predictEnsemble(ensembleModel, cvTest)
+
+            score = rmse(groundTruth, ensemblePreds, multioutput='uniform_average')
+            if(score < minRMSE):
+                minRMSE = score
+                minWeights = currWeights
+
+        (ensembleModel, _) = getEnsemble(cvTrain, minWeights)
+        preds = predictEnsemble(ensembleModel, cvTest)
+        res = pd.DataFrame()
+        res['w0'] = minWeights[0]
+        res['w1'] = minWeights[1]
+        res['w2'] = minWeights[2]
+        res['w3'] = minWeights[3]
+        res['R2'] = r2_score(groundTruth, ensemblePreds, multioutput='uniform_average')
+        res['RMSE'] = rmse(groundTruth, ensemblePreds, multioutput='uniform_average')
+        res['MAE'] = mae(groundTruth, ensemblePreds, multioutput='uniform_average')
+
+        results.append(res)
+    results
+
 
 def printResultOfCVTuning(result):
     print("\nAll Iterations\n")
