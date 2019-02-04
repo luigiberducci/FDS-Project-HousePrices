@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import rpy2.robjects as robjects
 from rpy2.robjects import pandas2ri
+from sklearn.svm import LinearSVR
 from sklearn import svm
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
@@ -29,39 +30,57 @@ R.source("sample2.R")
 fullData = pandas2ri.ri2py_dataframe(R['fullData'])
 testIDs = np.arange(1461, 2920)
 
-# Train simple models, ensemble and stacked. Save their prediction on files.
+# MAIN FUNCTION
 def main():
+    savePredictionByAllModels()
+
+def runTuningXGB():
+    data = getFinalFeatures()
+    print("[Info] TUNING XGB - Starting...")
+    tuningXGB = tuneXGB(data)
+    print("[Info] TUNING XGB - Done.\n\n")
+    return tuningXGB
+
+def runTuningSVM():
+    data = getFinalFeatures()
+    print("[Info] TUNING SVM - Starting...")
+    tuningSVM = tuneSVM(data)
+    print("[Info] TUNING SVM - Done.")
+    return tuningSVM
+
+# Train simple models, ensemble and stacked. Save their prediction on files.
+def savePredictionByAllModels():
     data = getFinalFeatures()
 
     lasso = getTrainedLasso(data)
     ridge = getTrainedRidge(data)
     xgb = getTrainedXGB(data)
     svm = getTrainedSVM(data)
-    ensemble = getTrainedEnsemble(data)
-    stacked  = getTrainedStacked(data)
+    # ensemble = getTrainedEnsemble(data)
+    # stacked  = getTrainedStacked(data)
 
     predLasso    = predictSalePrices(lasso, data)
     predRidge    = predictSalePrices(ridge, data)
     predXGB      = predictSalePrices(xgb, data)
     predSVM      = predictSalePrices(svm, data)
-    predStacked  = predictSalePrices(stacked, data)
-    predEnsemble = predictEnsemble(ensemble, data)
+    # predStacked  = predictSalePrices(stacked, data)
+    # predEnsemble = predictEnsemble(ensemble, data)
 
     savePredictionsOnFile(testIDs, predLasso,   createOutFilepath("Lasso"))
     savePredictionsOnFile(testIDs, predRidge,   createOutFilepath("Ridge"))
     savePredictionsOnFile(testIDs, predXGB,     createOutFilepath("XGB"))
     savePredictionsOnFile(testIDs, predSVM,     createOutFilepath("SVM"))
-    savePredictionsOnFile(testIDs, predEnsemble,createOutFilepath("Ensemble"))
-    savePredictionsOnFile(testIDs, predStacked, createOutFilepath("Stacked"))
+    # savePredictionsOnFile(testIDs, predEnsemble,createOutFilepath("Ensemble"))
+    # savePredictionsOnFile(testIDs, predStacked, createOutFilepath("Stacked"))
 
-    predictions = (predLasso, predRidge, predXGB, predSVM, predEnsemble, predStacked)
-    models = (lasso, ridge, xgb, svm, ensemble, stacked)
-    return models
+    # predictions = (predLasso, predRidge, predXGB, predSVM, predEnsemble, predStacked)
+    # models = (lasso, ridge, xgb, svm, ensemble, stacked)
+    # return models
 
 # OUTPUT WRITING
 # The functions below are used to handle the output.
 def createOutFilepath(modelName):
-    prefix = "2019_02_04_tuned_"
+    prefix = "2019_02_04_ReTuned_"
     outDir = "out"
     extens = "csv"
     name = prefix + modelName.upper() + "." + extens
@@ -96,7 +115,7 @@ def getTestData(data):
 
 def getPredictorsAndPrices(data):
     predictors = data.iloc[:, :-1]
-    prices  = data['SalePrice']
+    prices  = data.iloc[:, -1]
     return (predictors, prices)
 
 # TRAINED MODELS
@@ -105,8 +124,11 @@ def getTrainedSVM(data):
     np.random.seed(1234)
     data = getTrainData(data)
     (predictors, prices) = getPredictorsAndPrices(data)
+    print("[Info] Create SVM...")
     model = getTunedSVM()
+    print("[Info] Train SVM...")
     model.fit(predictors, prices)
+    print("[Info] SVM Trained.")
     return model
 
 def getTrainedLasso(data):
@@ -141,7 +163,7 @@ def getTrainedStacked(data):
     ridge = getTunedRidge()
     XGB = getTunedXGB()
     SVM = getTunedSVM()
-    metaModel = svm.SVR(kernel='rbf')
+    metaModel = svm.SVR(kernel='rbf', gamma='scale')
 
     stacked = StackingRegressor(regressors=[lasso, ridge, XGB, SVM],
                                 meta_regressor=metaModel)
@@ -223,25 +245,31 @@ def getTunedRidge():
     return Ridge(alpha=2.0, fit_intercept=True)
 
 def getTunedSVM():
-    return svm.SVR(C=15, gamma=1e-06)
+    return LinearSVR(C=0.00125, epsilon=0.1)
 
 def getTunedXGB():
-    # return xgb.XGBRegressor(objective ='reg:linear', colsample_bytree = 0.75, max_depth = 3)
-    return xgb.XGBRegressor( colsample_bytree=0.4603, gamma=0.0468,
-                             learning_rate=0.05, max_depth=3,
-                             min_child_weight=1.7817, n_estimators=2200,
+    # return xgb.XGBRegressor( colsample_bytree=0.4603, gamma=0.0468,
+    #                          learning_rate=0.05, max_depth=3,
+    #                          min_child_weight=1.7817, n_estimators=2200,
+    #                          reg_alpha=0.4640, reg_lambda=0.8571,
+    #                          subsample=0.5213, silent=1,
+    #                          random_state =7, nthread = -1)
+    return xgb.XGBRegressor( colsample_bytree=0.75, gamma=0.01, eta=0.005,
+                             learning_rate=0.05, max_depth=4,
+                             min_child_weight=2, n_estimators=2200,
                              reg_alpha=0.4640, reg_lambda=0.8571,
-                             subsample=0.5213, silent=1,
+                             subsample=0.8, silent=1,
                              random_state =7, nthread = -1)
+
 
 # TUNING TEST
 # The remaining functions are used to tuning the models, test their performance.
 # The are WILD script and we cannot ensure their maintainance.
 def tuneSVM(data):
-    Cs = [0.1, 1, 7.5, 10, 12.5, 15]
-    gammas = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1]
-    paramGrid = {'C': Cs, 'gamma' : gammas}
-    model = svm.SVR()
+    Cs = [0.0001, 0.001, 0.01, 0.1, 1, 5]
+    epsilons = [0.01, 0.1]
+    paramGrid = {'C': Cs, 'epsilon' : epsilons}
+    model = LinearSVR(max_iter=100000)
     res = getTunedModel(model, paramGrid, data)
     printResultOfCVTuning(res)
 
@@ -249,10 +277,10 @@ def tuneXGB(data):
     nrounds = [750]
     min_child_weight = [2]
     gamma = [0.01]
-    etas = [0.01,0.005,0.001]
-    max_depths = [4,6,8]
-    colsample_bytrees = [0,1,10]
-    subsamples = [0,0.2,0.4,0.6]
+    etas = [0.005, 0.0075, 0.01]
+    max_depths = [4]
+    colsample_bytrees = [0.65, 0.75, 0.95]
+    subsamples = [0.7, 0.8, 0.9, 1]
     paramGrid = {'nrounds': nrounds, 'min_child_weight': min_child_weight,
                  'gamma' : gamma, 'eta':etas, 'max_depth': max_depths,
                  'colsample_bytree':colsample_bytrees, 'subsample': subsamples}
@@ -311,11 +339,12 @@ def ensembleCV():
 
 
 def printResultOfCVTuning(result):
-    print("\nAll Iterations\n")
-    cv_results = result.cv_results_
-    for mean_score, params in zip(cv_results["mean_test_score"], cv_results["params"]):
-        print(params, mean_score)
+    # print("\nAll Iterations\n")
+    # cv_results = result.cv_results_
+    # for mean_score, params in zip(cv_results["mean_test_score"], cv_results["params"]):
+    #     print(params, mean_score)
     print("\nBest parameters\n")
     print(result.best_params_)
 
-
+if __name__=="__main__":
+    main()
