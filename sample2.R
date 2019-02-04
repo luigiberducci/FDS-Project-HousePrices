@@ -14,6 +14,7 @@ library(caret)
 
 library(e1071)
 library(psych)
+library(dummies)
 
 source("featureEngineering.R")
 source("modelTesting.R")
@@ -49,7 +50,7 @@ bootstrap <- function(data, totBathRms=T, carsXarea=T, recentGarage=F, totalSF=T
 
 # Performs feature selection
 getFinalFeatures <- function(data){
-    data <- bootstrap(data)
+    data <- bootstrapLast(data)
     data <- importanceSelection(data, getLassoModel)
     data
 }
